@@ -1,6 +1,6 @@
 ---
 name: manual-writer
-description: Activar en la fase 5 del workflow de manuales o por el comando /manual-write. Redacta cada sección del manual usando subagentes frescos, uno por sección, con review entre etapas y persona de technical writer senior. Requiere 02-plan.md, 03-inventario.md y capturas/ (fase 4) completas. Produce los archivos secciones/{ID}-{slug}.md.
+description: Activar en la fase 5 del workflow de manuales o por el comando /manual-write. Requiere 02-plan.md, 03-inventario.md y capturas/ presentes.
 ---
 
 # Skill: manual-writer

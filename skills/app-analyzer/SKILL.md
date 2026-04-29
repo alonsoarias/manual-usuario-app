@@ -1,6 +1,6 @@
 ---
 name: app-analyzer
-description: Activar en la fase 3 del workflow de manuales o por el comando /manual-analyze. Detecta automáticamente el tipo de aplicación a documentar y aplica la estrategia de inspección apropiada según el nivel de acceso disponible (sin acceso, código fuente, app desplegada o ambos). Produce el inventario 03-inventario.md con texto literal de la UI. Requiere 02-plan.md presente y aprobado.
+description: Activar en la fase 3 del workflow de manuales o por el comando /manual-analyze, cuando se necesita inventariar pantallas, rutas, formularios, mensajes del sistema y roles de cualquier aplicación (web, móvil, escritorio o CMS). Requiere 02-plan.md presente.
 ---
 
 # Skill: app-analyzer

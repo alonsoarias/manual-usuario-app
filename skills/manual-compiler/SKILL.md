@@ -1,6 +1,6 @@
 ---
 name: manual-compiler
-description: Activar en la fase 6 del workflow de manuales o por el comando /manual-compile. Compila las secciones redactadas a DOCX (vía Pandoc) y PDF (Typst preferido, Pandoc+LaTeX como fallback). Requiere secciones/ completo y capturas/ presente. Inyecta tabla de contenido automática, numeración y, opcionalmente, plantilla DOCX del cliente con membrete.
+description: Activar en la fase 6 del workflow de manuales o por el comando /manual-compile, cuando se necesita compilar secciones Markdown a DOCX o PDF. Requiere secciones/ y capturas/ presentes.
 ---
 
 # Skill: manual-compiler

@@ -1,6 +1,6 @@
 ---
 name: manual-planner
-description: Activar en la fase 2 del workflow de manuales o por el comando /manual-plan. Convierte el brief 01-brief.md en un plan estructurado de secciones donde cada sección es una tarea atómica autocontenida que un subagente fresco puede completar en 2-5 minutos. Requiere 01-brief.md presente y aprobado.
+description: Activar en la fase 2 del workflow de manuales o por el comando /manual-plan. Requiere 01-brief.md presente y aprobado.
 ---
 
 # Skill: manual-planner

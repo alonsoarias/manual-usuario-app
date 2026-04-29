@@ -1,6 +1,6 @@
 ---
 name: manual-orchestrator
-description: Activar cuando el usuario pida crear, generar, redactar, escribir o producir un manual de usuario, guía de usuario, manual de uso, instructivo, documentación de usuario final, user manual, user guide o end-user documentation de cualquier aplicación de software (web, móvil, escritorio o CMS). Coordina el workflow completo de 7 fases con artefactos verificables y checkpoints humanos.
+description: Activar cuando el usuario pida crear, generar, redactar o producir un manual de usuario, guía de usuario, manual de uso, instructivo, user manual, user guide o end-user documentation de cualquier aplicación de software (web, móvil, escritorio o CMS).
 ---
 
 # Skill: manual-orchestrator

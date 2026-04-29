@@ -1,6 +1,6 @@
 ---
 name: manual-brainstormer
-description: Activar al inicio del flujo de manuales (fase 1), por el comando /manual-brainstorm o cuando el usuario pida redactar un manual sin haber definido alcance, audiencia ni formato. Realiza brainstorming socrático en 3 bloques de preguntas y produce el artefacto 01-brief.md que el resto del flujo consume.
+description: Activar al inicio del flujo de manuales (fase 1), por el comando /manual-brainstorm, o cuando el usuario pida redactar un manual sin haber definido alcance, audiencia ni formato.
 ---
 
 # Skill: manual-brainstormer

@@ -1,6 +1,6 @@
 ---
 name: manual-verifier
-description: Activar en la fase 7 del workflow de manuales o por el comando /manual-verify. Skill OBLIGATORIA — codifica la regla de evidencia antes de afirmaciones. Ejecuta 10 checks (C1-C10), produce verificacion.md y un veredicto APROBADO o BLOQUEADO. Sin este informe ejecutado y mostrado, no se puede declarar el manual terminado.
+description: Activar en la fase 7 del workflow de manuales, por el comando /manual-verify, o antes de declarar un manual entregable. Skill obligatoria — sin su informe ejecutado, no se puede afirmar que el manual está terminado.
 ---
 
 # Skill: manual-verifier

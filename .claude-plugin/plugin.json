@@ -2,10 +2,12 @@
   "name": "manual-usuario-app",
   "version": "1.0.0",
   "license": "MIT",
-  "description": "Plugin genérico y multi-aplicación para generar manuales de usuario profesionales en DOCX y PDF a partir de cualquier aplicación de software (web, móvil, escritorio o plataformas CMS), con captura automática de pantallas vía MCPs de browser y un workflow socrático de 7 fases con verificación basada en evidencia.",
+  "description": "Plugin genérico y multi-aplicación para generar manuales de usuario profesionales en DOCX y PDF a partir de cualquier aplicación de software (web, móvil, escritorio o CMS), con captura automática de pantallas vía MCPs de browser y workflow socrático de 7 fases con verificación basada en evidencia.",
   "author": {
     "name": "manual-usuario-app contributors"
   },
+  "homepage": "https://github.com/alonsoarias/manual-usuario-app",
+  "repository": "https://github.com/alonsoarias/manual-usuario-app",
   "keywords": [
     "manual",
     "user-guide",
@@ -19,25 +21,5 @@
     "typst",
     "pandoc",
     "technical-writing"
-  ],
-  "commands": [
-    "./commands/manual.md",
-    "./commands/manual-brainstorm.md",
-    "./commands/manual-plan.md",
-    "./commands/manual-analyze.md",
-    "./commands/manual-capture.md",
-    "./commands/manual-write.md",
-    "./commands/manual-compile.md",
-    "./commands/manual-verify.md"
-  ],
-  "skills": [
-    "./skills/manual-orchestrator",
-    "./skills/manual-brainstormer",
-    "./skills/manual-planner",
-    "./skills/app-analyzer",
-    "./skills/screenshot-capturer",
-    "./skills/manual-writer",
-    "./skills/manual-compiler",
-    "./skills/manual-verifier"
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: screenshot-capturer
-description: Captura pantallas automáticamente usando las herramientas disponibles en el entorno (Playwright MCP, Chrome DevTools MCP, Puppeteer MCP, CLI bash) o genera instrucciones para captura manual cuando no hay automatización disponible. Activar en la fase 4 del workflow de manuales, por el comando /manual-capture o cuando el usuario pida tomar screenshots, capturas de pantalla o pantallazos de una aplicación. Requiere 02-plan.md y 03-inventario.md presentes.
+description: Activar en la fase 4 del workflow de manuales, por el comando /manual-capture, o cuando el usuario pida tomar screenshots, capturas de pantalla, pantallazos o imágenes de una aplicación. Requiere 02-plan.md y 03-inventario.md presentes.
 ---
 
 # Skill: screenshot-capturer
