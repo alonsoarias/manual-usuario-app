@@ -160,24 +160,37 @@ Tras un acceso correcto, el sistema lo dirige a {pantalla destino}.
 
 ## Pasos
 
-![{descripción de la captura inicial}](capturas/{captura-1}.png)
+(Vista panorámica inicial; opcional si la pantalla es obvia. Cuando aparece más de un paso en la misma pantalla, esta vista lleva los elementos numerados 1, 2, 3 en el orden de la lista.)
 
-1. {Verbo en imperativo} {complemento}.
+![{descripción de la pantalla con los pasos numerados}](capturas/{ID}-pantalla-pasos-1-2-3.png)
+
+1. {Verbo en imperativo} **{nombre literal del botón / campo}**.
+
+   ![{descripción de la captura: elemento resaltado}](capturas/{ID}-paso-1-{accion}-{elemento}.png)
+
 2. {Verbo en imperativo} {complemento}.
 
-   ![{descripción}](capturas/{captura-2}.png)
+   ![{descripción}](capturas/{ID}-paso-2-{accion}-{elemento}.png)
 
-3. {Verbo en imperativo} {complemento}.
-4. Pulse **{botón}**.
+3. Pulse **{botón}**.
+
+   ![{descripción}](capturas/{ID}-paso-3-clic-{boton}.png)
 
 ## Resultado
 
-(1 párrafo: qué cambia cuando termina con éxito. Mensaje del sistema literal si aplica.)
+(1 párrafo: qué cambia cuando termina con éxito. Mensaje del sistema literal si aplica. Si hay confirmación visual, captura asociada.)
 
 ## Variantes y casos de error (opcional)
 
 **Si {condición}**, el sistema {comportamiento}. Para resolverlo, {acción}.
 ```
+
+### Reglas específicas de esta plantilla
+
+- **Cada paso accionable lleva una captura con el elemento resaltado.** No vale la captura genérica de la pantalla: el botón, campo o control sobre el que se actúa debe estar marcado (recuadro rojo, número del paso, flecha, halo). El plan declara el nombre exacto del PNG y la skill `screenshot-capturer` lo produce.
+- **La vista panorámica con números (1, 2, 3) sustituye una secuencia de capturas individuales** cuando todos los elementos accionables caben en la misma pantalla y son visualmente cercanos. En ese caso, los pasos del texto referencian la misma imagen y se apoyan en la numeración para señalar dónde mirar.
+- **No mezclar ambos esquemas en la misma sección**: o se hace todo con vista panorámica numerada, o todo con captura individual por paso. La incoherencia visual confunde al lector.
+- **Verbo + elemento literal en negrita en el primer renglón del paso**, captura debajo. El lector ve el paso, baja a la captura, ve el elemento resaltado, ejecuta la acción.
 
 ## 8. `troubleshooting`
 

@@ -19,7 +19,7 @@ Verificar que existen:
 
 Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los checks.
 
-## Los 10 checks
+## Los 11 checks
 
 | # | Nombre | Bloqueante |
 |---|--------|------------|
@@ -33,6 +33,7 @@ Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los
 | C8 | DOCX abre sin error | Sí |
 | C9 | PDF tiene texto seleccionable | Sí |
 | C10 | TOC presente | Sí |
+| C11 | Capturas de pasos accionables anotadas | Sí |
 
 ### C1 — Conteo de secciones (bloqueante)
 
@@ -131,6 +132,19 @@ Verificar:
 
 - DOCX: contiene un `w:sdt` con `w:docPartGallery="Table of Contents"`, o el primer encabezado nivel 1 está precedido por entradas tipo TOC.
 - PDF: las primeras 5 páginas contienen las palabras "Contenido", "Tabla de contenido", "Índice" o equivalente del idioma del brief, **y** al menos una entrada por sección del plan.
+
+### C11 — Capturas de pasos accionables anotadas (bloqueante)
+
+Para cada captura listada en `02-plan.md` cuya entrada declare `anotación: recuadro|numerada-N|flecha|halo`, verificar que el PNG tiene marcas visuales del color declarado (por defecto `#ff5722` o tonalidad próxima). Estrategia automatizable:
+
+1. Extraer el PNG de `capturas/`.
+2. Cargar con Pillow y muestrear píxeles cuyo canal R esté en `[200, 255]` y G en `[60, 120]` y B en `[20, 80]` (rango aproximado del naranja-rojo de resaltado).
+3. Si la cantidad de píxeles del color de resaltado es `< 0.05%` del total, marcar como **fallido** (la anotación declarada no aparece visualmente).
+4. Si el plan declara `numerada-N`, además contar regiones conexas de ese color y verificar que sean `>= N`.
+
+Adicional: para cada sección de tipo `tarea-paso-a-paso`, listar los pasos cuyo verbo es accionable (`pulse`, `haga clic`, `escriba`, `seleccione`, `marque`, `arrastre`, `tape`, `toque`) y verificar que cada uno cita en el cuerpo una captura cuya entrada en el plan tenga anotación distinta de `ninguna`.
+
+Si el verificador no puede ejecutar Pillow, marcar el check como `verificación-parcial` y reportar el listado de capturas pendientes de revisión humana.
 
 ## Salida obligatoria: `verificacion.md`
 

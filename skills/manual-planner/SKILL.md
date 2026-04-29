@@ -59,8 +59,8 @@ ambiente_capturas:
 - **Tipo:** {portada | tabla-contenido-auto | introduccion | requisitos | acceso | modulo | tarea-paso-a-paso | troubleshooting | glosario | soporte | apendice}
 - **Audiencia:** {perfil heredado del brief o sub-perfil}
 - **Páginas estimadas:** {número o rango}
-- **Capturas requeridas:**
-  - `{ID-seccion}-{descripcion}.png` — {qué pantalla, en qué estado}
+- **Capturas requeridas:** (cada entrada con archivo, descripción, anotación, selector)
+  - `{ID}-{descripcion}.png` — {qué pantalla, en qué estado} — anotación: `ninguna|recuadro|numerada-N|flecha|halo|tachado-datos` — selector: `{CSS o XPath del elemento, vacío si anotación=ninguna}`
 - **Tareas que cubre:** (sólo si tipo = tarea-paso-a-paso o modulo)
   - {verbo + objeto, copiado literal del brief}
 - **Criterio de hecho:**
@@ -90,9 +90,24 @@ Cada sección del plan debe corresponder a:
 
 **No inventar secciones que el brief no autorice.** Si el redactor cree que falta algo, pedir al usuario actualizar el brief, no añadirlo silenciosamente.
 
-### R4 — Capturas listadas con nombre exacto
+### R4 — Capturas listadas con nombre exacto y anotación declarada
 
-El nombre de archivo PNG debe seguir el formato `{ID}-{descripcion-kebab}.png`. Por ejemplo: `S03-pantalla-login-error.png`. Esto permite que la fase 4 produzca los archivos sin ambigüedad y que la fase 5 los referencie sin escribir rutas a mano.
+El nombre de archivo PNG debe seguir el formato `{ID}-{descripcion-kebab}.png`. Cuando la captura ilustra una acción concreta del usuario, el nombre incluye además el número de paso y la acción: `{ID}-paso-{N}-{accion}-{elemento}.png` (ej. `S05-paso-3-clic-guardar.png`).
+
+Cada captura del plan declara también **qué anotación lleva**, en una columna explícita. Valores posibles:
+
+| Anotación | Cuándo |
+|-----------|--------|
+| `ninguna` | Captura puramente descriptiva (pantalla en estado neutro) |
+| `recuadro` | Resaltar un solo elemento accionable |
+| `numerada-N` | Varios pasos sobre la misma pantalla, numerados 1..N |
+| `flecha` | Indicar dirección o sub-elemento dentro de un control |
+| `halo` | Resaltar zona ambigua sin un control único |
+| `tachado-datos` | Ocultar PII visible en la captura |
+
+Si una sección del plan tiene tipo `tarea-paso-a-paso`, la regla es estricta: **cada paso accionable tiene su captura asociada con anotación distinta de `ninguna`**. No se puede tener un paso "Pulse Guardar" cuya captura sea simplemente la pantalla sin marcar dónde está Guardar.
+
+Esto permite que la fase 4 produzca los archivos sin ambigüedad (sabe qué resaltar) y que la fase 5 los referencie sin escribir rutas a mano.
 
 ### R5 — Criterio de hecho objetivo
 

@@ -64,12 +64,22 @@ Los nombres de archivo siguen exactamente el formato declarado en `02-plan.md` p
 {ID-seccion}-{descripcion-kebab}.png
 ```
 
+Cuando la captura ilustra un paso accionable, el nombre incluye el número de paso y la acción para que sea trazable a la prosa:
+
+```
+{ID-seccion}-paso-{N}-{accion}-{elemento}.png
+```
+
 Ejemplos:
 
-- `S03-pantalla-login.png`
-- `S03-pantalla-login-error.png`
-- `S05-dashboard-vacio.png`
-- `S05-dashboard-con-datos.png`
+| Tipo | Ejemplo |
+|------|---------|
+| Pantalla en estado neutro | `S03-pantalla-login.png` |
+| Pantalla en estado de error | `S03-pantalla-login-error.png` |
+| Vista panorámica con varios pasos numerados | `S05-dashboard-pasos-1-2-3.png` |
+| Acción individual con elemento resaltado | `S05-paso-3-clic-guardar.png` |
+| Acción de escritura con campo resaltado | `S03-paso-1-escribir-correo.png` |
+| Selección de opción | `S07-paso-2-seleccionar-rol-editor.png` |
 
 Si el plan declaró un nombre, **no improvisar otro**. Si la captura no existe en el plan, no producirla.
 
@@ -102,34 +112,95 @@ Heredar del plan (`ambiente_capturas`). Por defecto:
 
 ## Anotaciones
 
-Cuando la captura requiere flechas, números o resaltados según el plan:
+### Regla obligatoria — toda acción se resalta
+
+Si una captura ilustra un paso accionable (clic, tap, escritura, selección, marcado, arrastre), el elemento sobre el que el usuario actúa **debe** quedar visualmente resaltado en la imagen. No es decorativo: es lo que permite al lector encontrar dónde mirar antes de leer el texto del paso. Un paso sin resaltado obliga al lector a buscar el botón en la captura, lo cual rompe la utilidad del manual.
+
+Tipos de resaltado, en orden de claridad:
+
+| Tipo de paso | Resaltado recomendado |
+|--------------|-----------------------|
+| Clic/tap en botón o enlace | Recuadro rojo (3 px) alrededor del elemento + número del paso si la captura cubre varias acciones |
+| Escritura en un campo | Recuadro alrededor del campo + cursor / valor de ejemplo en gris |
+| Selección de opción en `<select>` | Recuadro alrededor del `<select>` + opción objetivo subrayada cuando esté abierto |
+| Marcado de checkbox / radio | Círculo o flecha que apunta al control |
+| Arrastre / drag-drop | Flecha curva del origen al destino |
+| Múltiples pasos en una pantalla | Numerar 1, 2, 3 en círculos sobre cada elemento, en el orden de ejecución |
+
+Color por defecto: naranja-rojo `#ff5722` para resaltados; los círculos numerados llevan fondo `#ff5722` y texto blanco. Mantener una **única paleta de resaltado en todo el manual**.
 
 ### Opción A — Inyección con `browser_evaluate` (preferida)
 
-Antes de capturar, inyectar overlays CSS con JavaScript:
+Antes de capturar, inyectar overlays CSS con JavaScript que aíslen y resalten el elemento accionable. La captura los registra como parte de la página, sin re-procesado.
+
+Patrón para resaltar un único elemento accionable:
 
 ```js
-// Ejemplo: numerar elementos del DOM
-document.querySelectorAll('button').forEach((el, i) => {
+// Resaltar un botón/campo específico antes de capturar
+const target = document.querySelector('button[name="guardar"]'); // selector del inventario
+if (target) {
+  target.style.outline = '3px solid #ff5722';
+  target.style.outlineOffset = '2px';
+  target.scrollIntoView({ block: 'center', behavior: 'instant' });
+}
+```
+
+Patrón para numerar varios pasos en una pantalla:
+
+```js
+// Numera elementos en el orden en que el usuario los toca
+const seq = ['#correo', '#password', 'button[type="submit"]']; // selectores ordenados
+seq.forEach((sel, i) => {
+  const el = document.querySelector(sel);
+  if (!el) return;
+  el.style.outline = '2px solid #ff5722';
+  const r = el.getBoundingClientRect();
   const dot = document.createElement('div');
   dot.textContent = String(i + 1);
-  dot.style.cssText = 'position:absolute;background:#ff5722;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font:bold 14px sans-serif;z-index:9999';
-  const r = el.getBoundingClientRect();
-  dot.style.top = (window.scrollY + r.top - 12) + 'px';
-  dot.style.left = (window.scrollX + r.left - 12) + 'px';
+  Object.assign(dot.style, {
+    position: 'absolute',
+    top: (window.scrollY + r.top - 14) + 'px',
+    left: (window.scrollX + r.left - 14) + 'px',
+    width: '28px', height: '28px',
+    background: '#ff5722', color: '#fff',
+    borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    font: 'bold 14px sans-serif',
+    zIndex: 99999,
+    boxShadow: '0 2px 4px rgba(0,0,0,.3)'
+  });
   document.body.appendChild(dot);
 });
 ```
 
-Ventaja: anotaciones a resolución nativa, sin re-procesado de imagen.
+Tras capturar, eliminar overlays y restaurar estilos:
+
+```js
+document.querySelectorAll('[data-overlay-screenshot]').forEach(e => e.remove());
+// si se modificó outline, deshacer
+```
 
 ### Opción B — Post-proceso con Pillow (Python)
 
-Si la inyección no es viable, anotar la imagen final con Pillow usando coordenadas declaradas en el plan o detectadas heurísticamente.
+Si la inyección no es viable (capturas existentes, fallback CLI, app sin DOM), anotar la imagen final con Pillow:
+
+```python
+from PIL import Image, ImageDraw
+
+img = Image.open(path)
+draw = ImageDraw.Draw(img)
+# Recuadro alrededor del elemento accionable; coordenadas vienen del plan
+draw.rectangle([x, y, x + w, y + h], outline=(255, 87, 34), width=3)
+img.save(path)
+```
 
 ### Opción C — Anotación manual
 
-En el fallback manual, instruir al usuario sobre qué anotar y con qué herramienta. No imponer software específico.
+En el fallback manual, las instrucciones deben listar **qué resaltar en cada captura** (no solo qué capturar). Ejemplo en `INSTRUCCIONES.md`:
+
+> Captura `S05-paso-3-clic-guardar.png` — resaltar con recuadro rojo el botón **Guardar** en la esquina inferior derecha.
+
+No imponer software de anotación; sí dejar las especificaciones (color, grosor, tipo de marca).
 
 ## Workflow de la skill
 
