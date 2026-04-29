@@ -247,6 +247,19 @@ fecha: "YYYY-MM-DD HH:MM"
 - No hay PNGs huérfanos (presentes en `capturas/` pero no en el plan): si los hay, listar y preguntar antes de borrar.
 - Si hay capturas pendientes manuales, informar al usuario y no avanzar a la fase 5 sin confirmación explícita.
 
+## Capturas fabricadas (excepción declarada)
+
+Cuando una captura del plan exige mostrar el **resultado** de una operación (matriz creada, tarea enviada, mensaje de éxito) y la app requiere validación AJAX o flujos cliente que la sesión automatizada no puede reproducir fluidamente, está permitido **fabricar** la captura con DOM injection siempre y cuando:
+
+1. Los datos inyectados sean **sintéticos y coherentes** con el flujo documentado (no inventes funcionalidades, copia el formato real).
+2. La fila/elemento inyectado **no contradiga** la estructura observada en el inventario.
+3. El manifiesto declare la captura como `OK-FABRICADA` con justificación explícita.
+4. La fase 7 verifique que el manifiesto reporta correctamente las fabricaciones.
+
+Las capturas fabricadas son **demostrativas para el lector**, no testimonio operativo. El manual no debe afirmar "el sistema responderá exactamente así" si el proceso real depende de variables del entorno (notificaciones, redirecciones, badges).
+
+No fabriques cuando puedas reproducir el flujo real con un ambiente de demo accesible. La fabricación es último recurso.
+
 ## Anti-patrones
 
 - Capturar pantallas no listadas en el plan "por si acaso".
@@ -255,3 +268,5 @@ fecha: "YYYY-MM-DD HH:MM"
 - Capturar a resolución 800x600 cuando el plan pide 1366x768.
 - Mezclar idiomas (UI en inglés, manual en español).
 - Saltarse el manifiesto.
+- Fabricar capturas sin declararlo en el manifiesto.
+- Fabricar capturas que muestren funcionalidades que la app no tiene.

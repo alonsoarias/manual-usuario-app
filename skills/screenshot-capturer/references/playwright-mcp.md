@@ -200,6 +200,31 @@ browser_evaluate          { code: "// no aplicable, requiere config externa de P
 - Cada sesión arranca con un perfil limpio: para usar el perfil del usuario, ver `chrome-devtools-mcp.md`.
 - Carga páginas más lento que un navegador real cuando hay mucho JavaScript: usar `browser_wait_for` antes que `browser_take_screenshot`.
 
+## Patrón: fuentes externas que no cargan (icon fonts, web fonts)
+
+Cuando la app usa Bootstrap Icons (`bi-*`), Font Awesome (`fa-*`) u otra fuente cargada por CDN, en sesiones automatizadas la fuente puede no cargar a tiempo o estar bloqueada por la red del entorno. Resultado típico: botones con `<i class="bi bi-plus"></i> Etiqueta` se renderizan con el texto en color blanco sobre fondo blanco (porque `btn-primary` aplica colores que dependen de la fuente cargada) o con el icono ausente.
+
+Síntoma en la captura: botón "vacío" con sólo el outline visible pero sin texto ni icono, aunque `textContent` del DOM sí contiene el texto.
+
+Mitigación canónica antes de capturar:
+
+```js
+// Forzar estilos visibles a los botones críticos antes de capturar
+document.querySelectorAll('.btn-primary, .btn-add-unit, .btn-add-topic, .btn-add-resource').forEach(btn => {
+  btn.style.background = '#0d6efd';
+  btn.style.color = '#fff';
+  btn.style.border = '1px solid #0a58ca';
+});
+document.querySelectorAll('.btn-secondary').forEach(btn => {
+  btn.style.background = '#6c757d';
+  btn.style.color = '#fff';
+});
+```
+
+Otra mitigación: pre-cargar la fuente con `page.addStyleTag` o esperar `document.fonts.ready` antes de capturar. Pero forzar colores en línea es más rápido y robusto.
+
+Si la captura sigue degradada (texto invisible aunque haya outline), marcarla como `OK-DEGRADADO` en el manifiesto con la causa: "Bootstrap Icons no carga; texto del botón invisible; recuadro y posición conservados". El manual de la fase 5 puede compensar describiendo el botón en prosa: *"Pulse el botón **Agregar Unidad** que aparece sobre la card de la primera unidad"* en vez de depender 100% de que el lector vea el texto en la captura.
+
 ## Patrón recomendado por captura
 
 Estructura que el `screenshot-capturer` debería seguir para cada entrada del plan:
