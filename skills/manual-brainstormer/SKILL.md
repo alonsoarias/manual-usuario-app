@@ -50,8 +50,9 @@ C3. **Profundidad** — escoger una de:
 - Hacer **un bloque a la vez**. No mezclar preguntas de bloques distintos.
 - Dentro de un bloque, hacer **todas** las preguntas; no aceptar respuestas parciales.
 - Si la respuesta es ambigua, repreguntar hasta tener algo concreto. Ejemplo: si el usuario dice "todo el mundo lo usa", pedir un perfil específico antes de continuar.
-- No sugerir respuestas: dejar que el usuario decida.
-- Si el usuario no sabe la respuesta de A1/A2/A3, preguntar dónde puede consultarse.
+- **No imponer respuestas, pero proponer cuando haya evidencia clara.** Si el contexto disponible (URL que el usuario pegó, archivos visibles, mensajes previos) sugiere una respuesta concreta, formúlala como propuesta tentativa y pide confirmación/corrección. Esto acelera al usuario y le da algo concreto que aprobar o rechazar. Sin evidencia, **no inventes**: pregunta abierta y espera.
+- Si el usuario no sabe la respuesta de A1/A2/A3, preguntar dónde puede consultarse (archivo `version.php`, `composer.json`, `package.json`, captura del "Acerca de", etc.).
+- Si no hay un nombre técnico distinto del comercial, registrar `nombre_tecnico = nombre_comercial` y seguir.
 
 ## Anti-patrones (qué no hacer)
 
@@ -100,6 +101,12 @@ profundidad: "quickstart | estandar | exhaustivo"
 paginas_objetivo: 30                 # rango: quickstart 5-15, estandar 20-50, exhaustivo 60+
 
 idioma: "..."                        # ej. "es", "en"
+
+discovery_realizado:
+  hubo: true | false
+  fecha: "YYYY-MM-DD"                # vacío si hubo: false
+  nivel: "2 | 3"                     # nivel 2 (URL) o 3 (URL + código). Nunca 0/1 en discovery
+  notas: "00-discovery.md"           # ruta relativa al sub-artefacto si existe, vacío si hubo: false
 ---
 
 ## Notas adicionales del usuario

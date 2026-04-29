@@ -120,6 +120,44 @@ document.querySelectorAll('[data-private]').forEach(el => {
 });
 ```
 
+### Sanear nombres y emails reales en `<select>` y listas
+
+Las apps administrativas suelen poblar selects con nombres y emails reales de usuarios del cliente. Antes de capturar la pantalla con un select desplegado o una lista de personas, reemplazar esos valores por placeholders genéricos:
+
+```js
+(() => {
+  // Patrones de PII frecuentes en UIs en español
+  const emailRegex = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+  // Reemplazo nombre+email en options de <select>
+  document.querySelectorAll('select option').forEach((opt, i) => {
+    if (i === 0) return; // dejar la primera (placeholder "Seleccione...")
+    opt.textContent = `Usuario de ejemplo ${i} (usuario${i}@example.com)`;
+  });
+  // Reemplazo en celdas de tablas con emails visibles
+  document.querySelectorAll('td, span, div').forEach(el => {
+    if (el.children.length === 0 && emailRegex.test(el.textContent)) {
+      el.textContent = el.textContent.replace(emailRegex, 'usuario@example.com');
+    }
+  });
+  // Reemplazo de nombres propios visibles (heurística: dos+ palabras capitalizadas seguidas)
+  // Aplicar SÓLO en zonas marcadas, no globalmente, para no romper la UI
+  document.querySelectorAll('[data-user-name], .user-name, .userpicture + .username').forEach((el, i) => {
+    el.textContent = `Usuario Demo ${i + 1}`;
+  });
+  return 'sanitizado';
+})()
+```
+
+Aplicarlo **antes** de capturar y, si el manual sigue siendo editable después, recargar la página para volver al estado real.
+
+#### Cuándo es obligatorio
+
+- Selects de "Asignar usuario / rol" con la lista de personas del cliente.
+- Tablas con columnas "Creado por", "Asignado a", "Email", "Identificación".
+- Cualquier captura tras login con "Bienvenido, {nombre real}" en el header.
+
+El plan de la fase 2 declara esta necesidad marcando la captura con anotación `tachado-datos`. La skill nunca decide tachar por su cuenta sin que el plan lo declare.
+
 ## Validar el contenido antes de capturar
 
 `browser_snapshot` produce el árbol de accesibilidad. Útil para confirmar que la página llegó al estado esperado:

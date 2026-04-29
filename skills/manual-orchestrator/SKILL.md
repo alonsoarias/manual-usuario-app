@@ -41,6 +41,7 @@ Todo el manual vive en una carpeta única para garantizar reproducibilidad y fac
 
 ```
 manual-{slug-app}-{YYYY-MM-DD}/
+├── 00-discovery.md                 (opcional, ver "Discovery preliminar")
 ├── 01-brief.md
 ├── 02-plan.md
 ├── 03-inventario.md
@@ -55,6 +56,21 @@ manual-{slug-app}-{YYYY-MM-DD}/
 │   └── manual.pdf
 └── verificacion.md
 ```
+
+## Discovery preliminar (excepción a la regla 1)
+
+La regla 1 dice "no saltar fases". Hay **una excepción legítima**: cuando el cliente no domina la terminología propia del producto (no sabe el nombre real del módulo, los roles, los campos, las pantallas), una **inspección preliminar** de Nivel 2/3 puede ejecutarse durante la fase 1 con dos restricciones estrictas:
+
+1. **No sustituye el inventario formal.** Su salida es `00-discovery.md` (notas crudas), nunca `03-inventario.md`. La fase 3 sigue siendo obligatoria y se ejecuta con todas sus reglas.
+2. **Sólo informa el brief.** Sirve para responder con datos reales los bloques A/B/C; los hallazgos se traducen en propuestas de respuesta que el usuario confirma.
+
+Casos típicos donde aplicar discovery preliminar:
+
+- El usuario dice "quiero un manual para X" y no sabe los nombres exactos de pantallas / roles / entidades.
+- El producto tiene workflows o entidades anidadas (módulos, sub-módulos, plugins de plugin) que el cliente no ha desplegado mentalmente.
+- El idioma de la UI puede no coincidir con lo que el cliente recuerda.
+
+El brainstormer registra el resultado del discovery en el campo `discovery_realizado` del `01-brief.md` con fecha y nivel de inspección. Si no hubo discovery, el campo es `false`.
 
 - `slug-app` se deriva del nombre comercial recogido en la fase 1, en kebab-case ASCII (sin acentos ni espacios).
 - `YYYY-MM-DD` es la fecha local del día en que arranca el flujo. No cambia durante la ejecución.
