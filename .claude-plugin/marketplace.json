@@ -1,0 +1,24 @@
+{
+  "name": "manual-usuario-app-marketplace",
+  "owner": {
+    "name": "manual-usuario-app contributors"
+  },
+  "plugins": [
+    {
+      "name": "manual-usuario-app",
+      "source": "./",
+      "description": "Plugin genérico para generar manuales de usuario profesionales (DOCX/PDF) de cualquier aplicación de software, con captura automática de pantallas vía MCP y workflow socrático de 7 fases.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "category": "documentation",
+      "keywords": [
+        "manual",
+        "user-guide",
+        "documentation",
+        "screenshot",
+        "docx",
+        "pdf"
+      ]
+    }
+  ]
+}
