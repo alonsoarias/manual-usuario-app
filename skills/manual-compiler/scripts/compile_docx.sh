@@ -69,6 +69,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONCATENATE="$SCRIPT_DIR/concatenate.py"
 
+# Única fuente del --from de pandoc (la comparte concatenate.py): el parse debe ser idéntico en validación y motor.
+if [[ ! -f "$SCRIPT_DIR/pandoc-from.txt" ]]; then
+    echo "ERROR: no se encontró pandoc-from.txt en $SCRIPT_DIR" >&2
+    exit 3
+fi
+PANDOC_FROM="$(<"$SCRIPT_DIR/pandoc-from.txt")"
+
 if [[ ! -f "$CONCATENATE" ]]; then
     echo "ERROR: no se encontró concatenate.py en $SCRIPT_DIR" >&2
     exit 3
@@ -88,7 +95,9 @@ python3 "$CONCATENATE" \
 mkdir -p "$(dirname "$OUTPUT")"
 
 echo "[2/3] Compilando DOCX con Pandoc..."
+# Markdown no confiable (lo redactan agentes): sin {=openxml} crudo ni matemáticas; mismo --from que la validación.
 PANDOC_ARGS=(
+    --from="$PANDOC_FROM"
     "$CONCAT_TMP"
     -o "$OUTPUT"
     --toc
@@ -98,8 +107,10 @@ PANDOC_ARGS=(
     --resource-path="$(dirname "$CAPTURAS"):$CAPTURAS:$SECCIONES"
 )
 
+TRUSTED_REFERENCE=""
 if [[ -n "$REFERENCE_DOC" ]]; then
     if [[ -f "$REFERENCE_DOC" ]]; then
+        TRUSTED_REFERENCE="$REFERENCE_DOC"
         PANDOC_ARGS+=(--reference-doc="$REFERENCE_DOC")
         echo "    Usando plantilla de referencia: $REFERENCE_DOC"
     else
@@ -113,6 +124,37 @@ echo "[3/3] Verificando salida..."
 if [[ ! -f "$OUTPUT" ]]; then
     echo "ERROR: no se generó el DOCX en $OUTPUT" >&2
     exit 4
+fi
+
+# Defensa en profundidad: los medios que añade el CONTENIDO a word/media sólo pueden ser imágenes (un archivo
+# ajeno embebido = fuga). Los que ya trae la plantilla del cliente (--reference-doc, archivo de confianza)
+# se ignoran: pandoc los copia tal cual (logo.emf, etc.).
+BAD_MEDIA="$(python3 - "$OUTPUT" "$TRUSTED_REFERENCE" <<'PYEOF'
+import sys
+import zipfile
+
+IMAGE_EXTENSIONS = {
+    "png", "jpg", "jpeg", "gif", "svg", "webp",  # web y capturas
+    "bmp", "tif", "tiff", "ico",  # ráster
+    "emf", "wmf", "eps", "pdf",  # vectoriales y de documento
+}
+MEDIA = "word/media/"
+
+
+def media(path):
+    with zipfile.ZipFile(path) as z:
+        return [n for n in z.namelist() if n.startswith(MEDIA)]
+
+
+trusted = set(media(sys.argv[2])) if sys.argv[2] else set()
+print(" ".join(n for n in media(sys.argv[1])
+               if n not in trusted and n.rsplit(".", 1)[-1].lower() not in IMAGE_EXTENSIONS))
+PYEOF
+)" || BAD_MEDIA="(DOCX ilegible)"
+if [[ -n "$BAD_MEDIA" ]]; then
+    rm -f "$OUTPUT"
+    echo "ERROR: word/media contiene archivos que no son imágenes: $BAD_MEDIA" >&2
+    exit 7
 fi
 
 SIZE_BYTES=$(wc -c < "$OUTPUT")

@@ -103,11 +103,24 @@ El nombre del archivo es `{ID}-{slug}.md`, donde `slug` es el título de la secc
    5. Aplicar criterios W1-W8.
    6. Si pasa, guardar en `secciones/{ID}-{slug}.md`.
    7. Si no, re-encargar (máx 3 veces).
-3. Generar `secciones/00-INDICE.md` con la lista en orden.
+3. Generar `secciones/00-INDICE.md` con la lista en orden, en el formato de la sección «Formato de `secciones/00-INDICE.md`».
 4. Reportar al usuario:
    - secciones producidas
    - secciones bloqueadas (con criterio fallido)
    - capturas referenciadas pero ausentes (bloqueante)
+
+## Formato de `secciones/00-INDICE.md`
+
+Una línea `- {archivo}.md` por sección, en el orden del plan, con el nombre exacto del archivo dentro de `secciones/`. Incluye los stubs `tabla-contenido-auto` (el compilador los salta). Sólo se leen las líneas que empiezan con `- `; no uses enlaces, numeración (`1.`) ni `*`. Un archivo listado que no existe, o una sección en el directorio que no figura en el índice, se omite y `concatenate.py` lo avisa por stderr.
+
+```markdown
+# Índice de secciones
+
+- S00-portada.md
+- S01-tabla-contenido-auto.md
+- S02-introduccion.md
+- S03-acceso-al-sistema.md
+```
 
 ## Entregables
 

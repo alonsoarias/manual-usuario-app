@@ -70,6 +70,13 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONCATENATE="$SCRIPT_DIR/concatenate.py"
+
+# Única fuente del --from de pandoc (la comparte concatenate.py): el parse debe ser idéntico en validación y motor.
+if [[ ! -f "$SCRIPT_DIR/pandoc-from.txt" ]]; then
+    echo "ERROR: no se encontró pandoc-from.txt en $SCRIPT_DIR" >&2
+    exit 3
+fi
+PANDOC_FROM="$(<"$SCRIPT_DIR/pandoc-from.txt")"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)/.."
 TYPST_TEMPLATE="$PLUGIN_ROOT/assets/manual-template.typ"
 
@@ -80,6 +87,14 @@ TYPST_TEMPLATE="${MANUAL_USUARIO_APP_TYPST_TEMPLATE:-$TYPST_TEMPLATE}"
 if [[ ! -f "$CONCATENATE" ]]; then
     echo "ERROR: no se encontró concatenate.py en $SCRIPT_DIR" >&2
     exit 3
+fi
+
+# El contenido lo redactan agentes: un enlace simbólico en secciones/ o capturas/ puede apuntar fuera
+# del manual (Typst los sigue aunque estén fuera de --root). `find` también detecta que el propio
+# directorio sea un enlace.
+if [[ -n "$(find "$SECCIONES" "$CAPTURAS" -type l -print -quit)" ]]; then
+    echo "ERROR: secciones/ o capturas/ contienen enlaces simbólicos; se rechazan por seguridad." >&2
+    exit 6
 fi
 
 CONCAT_TMP="$(mktemp -t manual-concat-XXXXXX.md)"
@@ -94,6 +109,13 @@ python3 "$CONCATENATE" \
     --output "$CONCAT_TMP"
 
 mkdir -p "$(dirname "$OUTPUT")"
+# Sin esto, un PDF de una corrida anterior hace pasar por buena una compilación que falló.
+rm -f "$OUTPUT"
+
+# El Markdown lo redactan agentes a partir de la app analizada: no es de confianza.
+# Typst sólo puede leer dentro del ancestro común de secciones/ y capturas/, y pandoc no
+# convierte bloques ```{=typst} del Markdown en código Typst (raw_attribute apagada).
+SANDBOX_ROOT="$(python3 -c 'import os, sys; print(os.path.commonpath([os.path.realpath(p) for p in sys.argv[1:]]))' "$SECCIONES" "$CAPTURAS")"
 
 extract_brief_lang() {
     python3 - "$BRIEF" <<'PYEOF'
@@ -106,6 +128,8 @@ PYEOF
 
 LANG_BRIEF="$(extract_brief_lang)"
 
+# Devuelve 0 si compiló, 1 si Typst no está disponible (se prueba LaTeX) y 2 si Typst está y FALLÓ:
+# un fallo provocable desde el contenido no puede degradar a LaTeX (fail-closed).
 compile_with_typst() {
     if ! command -v typst >/dev/null 2>&1; then
         return 1
@@ -117,9 +141,19 @@ compile_with_typst() {
     echo "[2/3] Compilando PDF con Typst..."
 
     TYP_TMP="$(mktemp -t manual-body-XXXXXX.typ)"
-    TYP_FINAL="$(mktemp -t manual-final-XXXXXX.typ)"
+    # El .typ final vive dentro de la raíz: Typst resuelve las rutas absolutas contra --root.
+    TYP_FINAL="$(mktemp -p "$SANDBOX_ROOT" .manual-final-XXXXXX.typ)" || return 2
 
-    pandoc "$CONCAT_TMP" -o "$TYP_TMP" --to=typst
+    pandoc --from="$PANDOC_FROM" "$CONCAT_TMP" -o "$TYP_TMP" --to=typst || return 2
+
+    # En Typst `/ruta` es relativa a --root: las imágenes (absolutas para pandoc) pasan a ser relativas a la raíz.
+    # Las que apuntan fuera de la raíz quedan como `/ruta/ajena`, que Typst no encuentra: falla en vez de leerlas.
+    python3 - "$TYP_TMP" "$SANDBOX_ROOT" <<'PYEOF'
+import sys
+path, root = sys.argv[1], sys.argv[2].rstrip("/")
+text = open(path, encoding="utf-8").read()
+open(path, "w", encoding="utf-8").write(text.replace(f'image("{root}/', 'image("/'))
+PYEOF
 
     {
         cat "$TYPST_TEMPLATE"
@@ -128,7 +162,10 @@ compile_with_typst() {
         cat "$TYP_TMP"
     } > "$TYP_FINAL"
 
-    typst compile "$TYP_FINAL" "$OUTPUT"
+    # Dentro de `if`/`||` errexit no aplica: el fallo se devuelve explícitamente.
+    if ! typst compile --root "$SANDBOX_ROOT" "$TYP_FINAL" "$OUTPUT"; then
+        return 2
+    fi
     return 0
 }
 
@@ -138,18 +175,26 @@ compile_with_xelatex() {
     fi
     echo "[2/3] Compilando PDF con XeLaTeX..."
 
-    pandoc "$CONCAT_TMP" \
+    # fontspec aborta si la fuente no existe: sólo se fuerzan las que fc-list lista (familia exacta).
+    local fonts font_args=()
+    fonts="$(fc-list : family 2>/dev/null | tr ',' '\n' || true)"
+    grep -qixF "DejaVu Sans" <<<"$fonts" && font_args+=(-V mainfont="DejaVu Sans")
+    grep -qixF "DejaVu Sans Mono" <<<"$fonts" && font_args+=(-V monofont="DejaVu Sans Mono")
+
+    if ! pandoc --from="$PANDOC_FROM" "$CONCAT_TMP" \
         -o "$OUTPUT" \
         --pdf-engine=xelatex \
         --toc --toc-depth=3 \
         --number-sections \
         --highlight-style=tango \
         --resource-path="$(dirname "$CAPTURAS"):$CAPTURAS:$SECCIONES" \
-        -V mainfont="DejaVu Sans" \
-        -V monofont="DejaVu Sans Mono" \
+        "${font_args[@]}" \
         -V geometry:margin=2.5cm \
         -V lang="$LANG_BRIEF" \
-        -V documentclass=report
+        -V documentclass=report; then
+        echo "    AVISO: XeLaTeX falló: ¿fuente DejaVu Sans o babel-$LANG_BRIEF sin instalar? Ver fc-list y tlmgr; probando pdfLaTeX." >&2
+        return 1
+    fi
     return 0
 }
 
@@ -159,7 +204,7 @@ compile_with_pdflatex() {
     fi
     echo "[2/3] Compilando PDF con pdfLaTeX (último recurso)..."
 
-    pandoc "$CONCAT_TMP" \
+    if ! pandoc --from="$PANDOC_FROM" "$CONCAT_TMP" \
         -o "$OUTPUT" \
         --pdf-engine=pdflatex \
         --toc --toc-depth=3 \
@@ -167,18 +212,28 @@ compile_with_pdflatex() {
         --highlight-style=tango \
         --resource-path="$(dirname "$CAPTURAS"):$CAPTURAS:$SECCIONES" \
         -V geometry:margin=2.5cm \
-        -V lang="$LANG_BRIEF"
+        -V lang="$LANG_BRIEF"; then
+        echo "    AVISO: pdfLaTeX falló (¿babel-$LANG_BRIEF sin instalar?)." >&2
+        return 1
+    fi
     return 0
 }
 
-if compile_with_typst; then
+TYPST_RC=0
+compile_with_typst || TYPST_RC=$?
+if [[ "$TYPST_RC" -eq 2 ]]; then
+    echo "ERROR: Typst falló y no se usa LaTeX como alternativa (el contenido no es de confianza). Corrija el error de Typst de arriba." >&2
+    exit 5
+fi
+
+if [[ "$TYPST_RC" -eq 0 ]]; then
     ENGINE="typst"
 elif compile_with_xelatex; then
     ENGINE="xelatex"
 elif compile_with_pdflatex; then
     ENGINE="pdflatex"
 else
-    echo "ERROR: no se encontró Typst, XeLaTeX ni pdfLaTeX. Instale alguno para generar PDF." >&2
+    echo "ERROR: no se pudo generar el PDF: Typst, XeLaTeX y pdfLaTeX no están instalados o fallaron (ver avisos)." >&2
     exit 4
 fi
 

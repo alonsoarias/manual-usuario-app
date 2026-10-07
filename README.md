@@ -67,6 +67,8 @@ Cada comando aislado verifica los pre-requisitos antes de ejecutar (regla 1).
 | `pdftotext` (poppler) | Verificación de PDF en fase 7 | Recomendado |
 | Fuentes DejaVu Sans / DejaVu Sans Mono | Plantilla por defecto | Recomendado |
 
+> Seguridad de la compilación: el Markdown lo redactan agentes y no es de confianza. Si Typst está instalado y falla, `compile_pdf.sh` termina con rc 5 sin caer a LaTeX; las imágenes fuera del manual o con esquemas no permitidos abortan con rc 2 y los enlaces simbólicos con rc 6. Detalle en `skills/manual-compiler/SKILL.md`, «Seguridad y códigos de salida».
+
 Para captura automática de pantallas, al menos uno:
 
 - **Playwright MCP** (preferido): `claude mcp add playwright npx '@playwright/mcp@latest'`

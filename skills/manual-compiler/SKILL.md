@@ -47,7 +47,7 @@ Si falta Pandoc, abortar (es obligatorio). Si falta Typst y LaTeX, advertir y co
 Comando final (lo dispara `compile_docx.sh`):
 
 ```
-pandoc {concat.md} \
+pandoc --from=markdown-raw_tex-raw_attribute-tex_math_dollars {concat.md} \
   -o salida/manual.docx \
   --toc --toc-depth=3 \
   --number-sections \
@@ -69,21 +69,21 @@ Si la plantilla no existe en la ruta declarada, advertir y compilar sin ella.
 
 ## Compilación PDF
 
-Estrategia en cascada (lo dispara `compile_pdf.sh`):
+Estrategia en cascada (lo dispara `compile_pdf.sh`). Si Typst está instalado y falla, el script termina con rc 5 y **no** cae a LaTeX (ver «Seguridad y códigos de salida»); LaTeX sólo se usa cuando Typst no está instalado:
 
 ### Estrategia 1 — Typst (preferido)
 
 1. Convertir el Markdown concatenado a Typst con Pandoc:
 
    ```
-   pandoc {concat.md} -o {concat.typ} --to=typst
+   pandoc --from=markdown-raw_tex-raw_attribute-tex_math_dollars {concat.md} -o {concat.typ} --to=typst
    ```
 
 2. Concatenar `assets/manual-template.typ` (encabezado de plantilla) con el Typst convertido.
 3. Compilar:
 
    ```
-   typst compile {concat-con-template.typ} salida/manual.pdf
+   typst compile --root {ancestro-común-de-secciones-y-capturas} {concat-con-template.typ} salida/manual.pdf
    ```
 
 Ventajas: tiempos de compilación mucho menores, soporte nativo de Unicode y fuentes del sistema, errores claros.
@@ -91,7 +91,7 @@ Ventajas: tiempos de compilación mucho menores, soporte nativo de Unicode y fue
 ### Estrategia 2 — XeLaTeX (fallback)
 
 ```
-pandoc {concat.md} \
+pandoc --from=markdown-raw_tex-raw_attribute-tex_math_dollars {concat.md} \
   -o salida/manual.pdf \
   --pdf-engine=xelatex \
   --toc --toc-depth=3 --number-sections \
@@ -107,12 +107,36 @@ pandoc {concat.md} \
 Sólo si el contenido es estrictamente ASCII Latin-1. No recomendado para manuales en español por la limitación de fuentes y caracteres especiales.
 
 ```
-pandoc {concat.md} \
+pandoc --from=markdown-raw_tex-raw_attribute-tex_math_dollars {concat.md} \
   -o salida/manual.pdf \
   --pdf-engine=pdflatex \
   --toc --toc-depth=3 --number-sections \
   -V geometry:margin=2.5cm
 ```
+
+## Seguridad y códigos de salida
+
+El Markdown de `secciones/` lo redactan agentes a partir de la app analizada: **no es de confianza**. Por eso los cuatro comandos pandoc de arriba (DOCX, Typst, XeLaTeX, pdfLaTeX) llevan el MISMO `--from` —apaga TeX/OpenXML/Typst crudo y las matemáticas `$..$`—, que vive en una única fuente, `skills/manual-compiler/scripts/pandoc-from.txt`, leída por los scripts shell y por `concatenate.py`: la validación de imágenes parsea el Markdown exactamente como lo hará el motor (si difirieran, una imagen podría quedar oculta para la validación y visible para el motor). Un test exige esa igualdad.
+
+| rc | Script | Significado |
+|----|--------|-------------|
+| 2 | `concatenate.py`, ambos `compile_*.sh` | Argumentos faltantes; o una imagen sale del manual, usa un esquema no permitido (`file:`, `ftp:`...), lleva `..` codificado (`%2e%2e`), NUL, consulta/fragmento (`?`/`#`), doble codificación, o es una referencia `![a][r]` con definición relativa. Sin salida escrita |
+| 3 | `compile_*.sh` | Falta `pandoc`, `python3` o `concatenate.py` |
+| 4 | `compile_pdf.sh` | Ningún motor PDF disponible o todos fallaron |
+| 5 | `compile_pdf.sh` | **Typst está instalado y falló**: no hay fallback a LaTeX (un fallo de Typst provocable desde el contenido no debe degradar a un motor que ejecute TeX) o no se generó el PDF |
+| 6 | `compile_pdf.sh` | `secciones/` o `capturas/` contienen enlaces simbólicos |
+| 7 | `compile_docx.sh` | Los medios que añade el contenido a `word/media` incluyen archivos que no son imágenes (ver «qué cuenta como imagen»); se borra el DOCX |
+
+Reglas que se derivan:
+
+- Toda imagen local debe resolverse (realpath) **dentro del ancestro común de `secciones/` y `capturas/`**. Se validan sobre el AST de pandoc, así que cubre imágenes en línea, por referencia, en tablas y en metadatos. Las rutas relativas se reescriben a absolutas sólo para imágenes en línea `![alt](ruta)`; escribe los espacios como `%20`. Las definiciones por referencia (`[r]: ruta`) deben ser absolutas y canónicas (sin `..` ni enlaces).
+- `concatenate.py` necesita `pandoc` para validar; sin él falla (rc 2) en vez de omitir la validación.
+- Los enlaces simbólicos en secciones se omiten con aviso (`concatenate.py`) y el PDF los rechaza (rc 6).
+- **Limitación conocida:** `realpath` no detecta enlaces duros (hardlinks): un hardlink a un archivo ajeno colocado dentro del manual pasa la validación.
+- **Las matemáticas `$..$` salen como texto literal en TODOS los formatos** (DOCX, Typst, LaTeX): con `tex_math_dollars` activa una imagen puede quedar oculta dentro de un nodo Math para la validación y visible para el motor, y en LaTeX `\input` se ejecutaría. `$5`, `$10`, `$HOME` en código y tablas se ven tal cual.
+- **Qué cuenta como imagen (rc 7):** extensiones `png, jpg, jpeg, gif, svg, webp` (web/capturas), `bmp, tif, tiff, ico` (ráster) y `emf, wmf, eps, pdf` (vectoriales y de documento). Los medios que ya trae la plantilla del cliente (`--reference-doc`, archivo de confianza; p. ej. un logo `.emf`) se ignoran en la comprobación, con cualquier extensión: sólo cuentan los añadidos por el contenido.
+- `![alt](<ruta con espacios>)` (ruta entre ángulos) se rechaza: codifica los espacios como `%20`.
+- Rutas con `%`, `?` o `#` en su nombre no se admiten en imágenes.
 
 ## Tabla de contenido y numeración
 
