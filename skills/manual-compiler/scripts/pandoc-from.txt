@@ -1,1 +1,1 @@
-markdown-raw_tex-raw_attribute-tex_math_dollars
+markdown-raw_tex-raw_attribute-tex_math_dollars-raw_html-native_divs-native_spans-bracketed_spans-fenced_divs-link_attributes-header_attributes-fenced_code_attributes-inline_code_attributes

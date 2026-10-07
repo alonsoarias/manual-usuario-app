@@ -95,6 +95,8 @@ alcance:
 formato:
   docx: true | false
   pdf: true | false
+  html: true | false                 # HTML autocontenido (salida/manual.html)
+  markdown: true | false             # Markdown GFM + imágenes (salida/manual.md, salida/web/)
   reference_doc_path: ""             # ruta absoluta o vacío
 
 profundidad: "quickstart | estandar | exhaustivo"

@@ -71,7 +71,7 @@ Estimar páginas:
 - DOCX: heurística por palabras (≈ 250 palabras/página de cuerpo). Convertir a Markdown con Pandoc, contar palabras, dividir.
 - PDF: `pdfinfo {pdf} | grep Pages` si está disponible; fallback con `pdftotext` y conteo de `\f`.
 
-Comparar contra `paginas_objetivo` del brief. Tolerancia: ±40%. Fuera de tolerancia, advertencia (no bloqueo).
+Comparar contra `paginas_objetivo` del brief. Tolerancia: ±40% (fuente única: el compilador y `/manual-compile` remiten aquí). Fuera de tolerancia, advertencia (no bloqueo).
 
 ### C5 — Coincidencia UI con inventario (advertencia)
 

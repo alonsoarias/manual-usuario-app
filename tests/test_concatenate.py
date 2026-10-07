@@ -190,19 +190,23 @@ class TestImagePaths(ConcatenateTestCase):
         target = self.image_target(self.concat())
         self.assertEqual(Path(target), (self.m["capturas"] / "login.png").resolve())
 
-    def test_urls_are_left_untouched(self):
+    def test_data_uri_images_are_left_untouched(self):
         self.build()
-        write_section(self.m["secciones"], "S01-a.md", "![x](https://example.com/a.png)\n")
-        self.assertIn("![x](https://example.com/a.png)", self.concat())
+        uri = "data:image/png;base64,AAAA"
+        write_section(self.m["secciones"], "S01-a.md", f"![x]({uri})\n")
+        self.assertIn(f"![x]({uri})", self.concat())
 
-    def test_remote_and_data_urls_are_left_untouched(self):
+    def test_remote_images_are_rejected_because_pandoc_would_download_them(self):
+        # pandoc descarga las imágenes remotas al compilar (HTML y DOCX): SSRF + incrustación en la salida
         self.build()
-        urls = ["data:image/png;base64,AAAA", "//cdn.example.com/a.png", "HTTP://H/A.PNG", "https://h/a.png"]
-        write_section(self.m["secciones"], "S01-a.md", "".join(f"![x]({u})\n\n" for u in urls))
-        text = self.concat()
-        for u in urls:
-            with self.subTest(url=u):
-                self.assertIn(f"![x]({u})", text)
+        for url in ("https://example.com/a.png", "http://127.0.0.1:9/a.png", "HTTP://H/A.PNG", "//cdn.example.com/a.png"):
+            with self.subTest(url=url):
+                write_section(self.m["secciones"], "S01-a.md", f"![x]({url})\n")
+                r = run_concat(concat_args(self.m, self.out))
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                self.assertIn("imagen remota", r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertFalse(self.out.exists())
 
     def test_optional_image_title_does_not_end_up_in_the_path(self):
         self.build()
@@ -274,6 +278,163 @@ class TestFrontmatterTitle(ConcatenateTestCase):
         text = self.concat()
         self.assertEqual(self.title_line(text), "Acme")
         self.assertIn('lang: "en"', header_lines(text))
+
+
+def header_value(text: str, key: str) -> str:
+    (line,) = [l for l in header_lines(text) if l.startswith(f"{key}:")]
+    return json.loads(line[len(key) + 1 :].strip())
+
+
+class TestLanguageLabels(ConcatenateTestCase):
+    """El subtítulo y el título de la TOC salen de una tabla por idioma, no de literales en español."""
+
+    EXPECTED = {
+        "es": ("Manual de usuario", "Tabla de contenido"),
+        "en": ("User manual", "Table of contents"),
+        "pt": ("Manual do usuário", "Índice"),
+    }
+
+    def build_lang(self, lang: str | None):
+        line = f"idioma: {lang}\n" if lang is not None else ""
+        self.build(f"---\nnombre_comercial: Acme\n{line}---\n")
+        write_section(self.m["secciones"], "S01-a.md", "AAA\n")
+
+    def test_subtitle_and_toc_title_follow_the_language(self):
+        for lang, (subtitle, toc_title) in self.EXPECTED.items():
+            with self.subTest(lang=lang):
+                self.root = self.root / lang
+                self.root.mkdir()
+                self.build_lang(lang)
+                text = self.concat()
+                self.assertEqual(header_value(text, "subtitle"), subtitle)
+                self.assertEqual(header_value(text, "toc-title"), toc_title)
+                self.assertEqual(header_value(text, "lang"), lang)
+
+    def test_region_and_case_are_ignored_when_choosing_labels(self):
+        for lang in ("en-US", "EN", "pt-BR"):
+            with self.subTest(lang=lang):
+                self.root = self.root / lang
+                self.root.mkdir()
+                self.build_lang(lang)
+                text = self.concat()
+                self.assertEqual(header_value(text, "subtitle"), self.EXPECTED[lang[:2].lower()][0])
+                self.assertEqual(header_value(text, "lang"), lang)  # el valor del brief no se reescribe
+
+    def test_missing_language_defaults_to_spanish(self):
+        self.build_lang(None)
+        self.assertEqual(header_value(self.concat(), "subtitle"), "Manual de usuario")
+
+    def test_unsupported_language_is_a_clear_error(self):
+        # fail-closed: un manual en francés con subtítulo en español sería un error silencioso en la entrega
+        for lang in ("fr", "klingon", "xx"):
+            with self.subTest(lang=lang):
+                self.root = self.root / lang
+                self.root.mkdir()
+                self.build_lang(lang)
+                r = run_concat(concat_args(self.m, self.out))
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                self.assertIn("idioma", r.stderr)
+                self.assertIn(lang, r.stderr)
+                for supported in ("es", "en", "pt"):
+                    self.assertIn(supported, r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertFalse(self.out.exists())
+
+
+class TestLinksAreNeverExecutable(ConcatenateTestCase):
+    """Un enlace o autolink con esquema ejecutable sale con el href vivo en HTML: mismo AST que las imágenes, mismo fail-closed."""
+
+    def run_with_link(self, snippet: str) -> subprocess.CompletedProcess:
+        self.build()
+        write_section(self.m["secciones"], "S01-a.md", f"Antes.\n\n{snippet}\n\nDespués.\n")
+        return run_concat(concat_args(self.m, self.out))
+
+    def assert_rejected(self, snippet: str, fragment: str | None = None):
+        r = self.run_with_link(snippet)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertFalse(self.out.exists())
+        if fragment:
+            self.assertIn(fragment, r.stderr)
+
+    def assert_accepted(self, snippet: str):
+        r = self.run_with_link(snippet)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Después.", self.out.read_text(encoding="utf-8"))
+
+    def test_javascript_scheme_link_is_rejected(self):
+        self.assert_rejected("[click](javascript:alert(1))", "javascript")
+
+    def test_javascript_scheme_autolink_is_rejected(self):
+        self.assert_rejected("<javascript:alert(1)>", "javascript")
+
+    def test_uppercase_scheme_does_not_evade_the_check(self):
+        base = self.root
+        for scheme in ("JavaScript", "JAVASCRIPT", "jAvAsCrIpT"):
+            with self.subTest(scheme=scheme):
+                self.root = base / scheme
+                self.root.mkdir()
+                self.assert_rejected(f"[x]({scheme}:alert(1))")
+
+    def test_vbscript_scheme_link_is_rejected(self):
+        self.assert_rejected("[x](vbscript:alert(1))", "vbscript")
+
+    def test_data_scheme_link_is_rejected(self):
+        self.assert_rejected("[x](data:text/html,alert(1))", "data")
+
+    def test_executable_scheme_inside_a_table_cell_is_rejected(self):
+        # mismo nodo Link, posición distinta: el walker del AST no depende de dónde cuelga
+        self.assert_rejected("| enlace |\n|---|\n| [x](javascript:alert(1)) |")
+
+    def test_executable_scheme_inside_a_footnote_is_rejected(self):
+        self.assert_rejected("ref[^1]\n\n[^1]: nota con [x](javascript:alert(1))")
+
+    def test_http_https_mailto_and_tel_links_are_accepted(self):
+        base = self.root
+        for i, url in enumerate(("https://example.com", "http://example.com", "mailto:a@example.com", "tel:+123")):
+            with self.subTest(url=url):
+                self.root = base / str(i)
+                self.root.mkdir()
+                self.assert_accepted(f"[x]({url})")
+
+    def test_relative_link_is_accepted(self):
+        self.assert_accepted("[x](../README.md)")
+
+    def test_anchor_link_is_accepted(self):
+        self.assert_accepted("[x](#seccion)")
+
+
+@unittest.skipUnless(shutil.which("pandoc"), "pandoc no instalado")
+class TestMetadataInContentIsRestricted(ConcatenateTestCase):
+    """Un bloque YAML a mitad de una sección fusiona metadatos en el documento: sólo los de concatenate.py."""
+
+    def run_with_block(self, block: str) -> subprocess.CompletedProcess:
+        self.build()
+        write_section(self.m["secciones"], "S01-a.md", f"Antes.\n\n{block}\n\nDespués.\n")
+        return run_concat(concat_args(self.m, self.out))
+
+    def test_file_reading_metadata_keys_are_rejected(self):
+        keys = ("css", "header-includes", "include-before", "include-after", "include-in-header",
+                "bibliography", "csl", "reference-doc", "template")
+        for key in keys:
+            with self.subTest(key=key):
+                self.root = self.root / key
+                self.root.mkdir()
+                r = self.run_with_block(f"---\n{key}: x\n---")
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                self.assertIn(key, r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertFalse(self.out.exists())
+
+    def test_a_pair_of_horizontal_rules_around_prose_is_not_metadata(self):
+        r = self.run_with_block("---\nuna línea de prosa\n---")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Después.", self.out.read_text(encoding="utf-8"))
+
+    def test_the_metadata_concatenate_writes_is_accepted(self):
+        self.build('---\nnombre_comercial: Acme\nversion: 1.0\nfecha_corte: 2026-10-07\nidioma: en\n---\n')
+        write_section(self.m["secciones"], "S01-a.md", "AAA\n")
+        self.assertEqual(run_concat(concat_args(self.m, self.out)).returncode, 0)
 
 
 class TestExitCodes(ConcatenateTestCase):
@@ -479,11 +640,20 @@ class TestImagesValidatedOnPandocAst(ConcatenateTestCase):
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("/etc/passwd", r.stderr)
 
-    def test_links_to_local_files_are_not_images_and_stay_untouched(self):
+    def test_link_to_a_local_path_is_not_an_image_and_stays_untouched(self):
+        # un enlace (no una imagen) a una ruta local sin esquema no se reescribe ni se contiene como las imágenes
         self.build()
-        write_section(self.m["secciones"], "S01-a.md", "[l](/etc/passwd) y <file:///etc/hosts>\n")
+        write_section(self.m["secciones"], "S01-a.md", "[l](/etc/passwd)\n")
         text = self.concat()
         self.assertIn("[l](/etc/passwd)", text)
+
+    def test_file_scheme_autolink_is_rejected_by_the_link_scheme_check(self):
+        # distinto de la ruta sin esquema de arriba: `file:` SÍ es un esquema, y no está en la lista admitida
+        self.build()
+        write_section(self.m["secciones"], "S01-a.md", "<file:///etc/hosts>\n")
+        r = run_concat(concat_args(self.m, self.out))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("file", r.stderr)
 
     @unittest.skipUnless(shutil.which("pandoc"), "pandoc no instalado")
     def test_legit_image_with_percent_encoded_space_still_works(self):

@@ -19,7 +19,7 @@ OUTPUT=""
 
 usage() {
     cat <<EOF
-Uso: $(basename "$0") --secciones DIR --capturas DIR --plan FILE --brief FILE --output FILE
+Uso: ${0##*/} --secciones DIR --capturas DIR --plan FILE --brief FILE --output FILE
 
 Compila las secciones del manual a PDF.
 
@@ -89,6 +89,17 @@ if [[ ! -f "$CONCATENATE" ]]; then
     exit 3
 fi
 
+OUT_DIR="$(dirname "$OUTPUT")"
+mkdir -p "$OUT_DIR"
+# Sin esto, un PDF de una corrida anterior hace pasar por buena una compilación que falló.
+rm -f "$OUTPUT"
+
+# salida/compilacion.log: lo mismo que se ve en consola (stdout y stderr), en modo append. Las dos tee corren
+# fuera del script: no cambian su código de salida.
+LOG="$OUT_DIR/compilacion.log"
+echo "=== ${0##*/} $(date -u +%Y-%m-%dT%H:%M:%SZ) ===" >> "$LOG"
+exec > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2)
+
 # El contenido lo redactan agentes: un enlace simbólico en secciones/ o capturas/ puede apuntar fuera
 # del manual (Typst los sigue aunque estén fuera de --root). `find` también detecta que el propio
 # directorio sea un enlace.
@@ -107,10 +118,6 @@ python3 "$CONCATENATE" \
     --plan "$PLAN" \
     --brief "$BRIEF" \
     --output "$CONCAT_TMP"
-
-mkdir -p "$(dirname "$OUTPUT")"
-# Sin esto, un PDF de una corrida anterior hace pasar por buena una compilación que falló.
-rm -f "$OUTPUT"
 
 # El Markdown lo redactan agentes a partir de la app analizada: no es de confianza.
 # Typst sólo puede leer dentro del ancestro común de secciones/ y capturas/, y pandoc no
@@ -163,7 +170,7 @@ PYEOF
     } > "$TYP_FINAL"
 
     # Dentro de `if`/`||` errexit no aplica: el fallo se devuelve explícitamente.
-    if ! typst compile --root "$SANDBOX_ROOT" "$TYP_FINAL" "$OUTPUT"; then
+    if ! typst compile --root "$SANDBOX_ROOT" --input "lang=$LANG_BRIEF" "$TYP_FINAL" "$OUTPUT"; then
         return 2
     fi
     return 0

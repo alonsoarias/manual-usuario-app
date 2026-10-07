@@ -10,10 +10,17 @@
   number-align: center,
 )
 
+// Idioma: `typst compile --input lang=xx`. Typst sólo acepta códigos de 2-3 letras en `lang` (`es-CO` o un valor
+// inventado abortan la compilación): se usa el subcódigo principal y, si no es válido, "es".
+#let lang = {
+  let raw = lower(sys.inputs.at("lang", default: "es")).split(regex("[-_]")).first()
+  if raw.match(regex("^[a-z]{2,3}$")) != none { raw } else { "es" }
+}
+
 #set text(
   font: "DejaVu Sans",
   size: 11pt,
-  lang: "es",
+  lang: lang,
 )
 
 #set par(
@@ -82,6 +89,7 @@
   it
 }
 
-#outline(title: [Tabla de contenido], depth: 3)
+// `title: auto`: Typst lo traduce según `lang` (Índice / Contents / Sumário).
+#outline(title: auto, depth: 3)
 
 #pagebreak()

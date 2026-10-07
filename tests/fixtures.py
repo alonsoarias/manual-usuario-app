@@ -12,9 +12,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO / "skills" / "manual-compiler" / "scripts"
 CONCATENATE = SCRIPTS / "concatenate.py"
-COMPILE_DOCX = SCRIPTS / "compile_docx.sh"
+COMPILE_PANDOC = SCRIPTS / "compile_pandoc.sh"
 COMPILE_PDF = SCRIPTS / "compile_pdf.sh"
 PANDOC_FROM_FILE = SCRIPTS / "pandoc-from.txt"
+CHECK_WEB_OUTPUT = REPO / "skills" / "manual-verifier" / "scripts" / "check_web_output.py"
 
 
 def _chunk(tag: bytes, data: bytes) -> bytes:

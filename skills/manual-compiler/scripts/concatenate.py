@@ -10,8 +10,12 @@ brief.
 Seguridad: el Markdown lo redactan agentes a partir de la app analizada y no es de confianza. Las
 imágenes se reescriben a rutas absolutas y luego se VALIDAN sobre el AST de pandoc (lo que pandoc
 resolverá de verdad: imágenes en línea, de referencia, en tablas, en metadatos). Toda imagen local
-debe resolverse (realpath) dentro del ancestro común de secciones/ y capturas/. Limitación: realpath
-no detecta enlaces duros (hardlinks); un hardlink a un archivo ajeno dentro del manual pasa.
+debe resolverse (realpath) dentro del ancestro común de secciones/ y capturas/; las remotas (que pandoc
+descargaría al compilar) se rechazan, y también las claves de metadatos ajenas a las que escribe este script.
+Los enlaces (`[a](url)`, autolinks) se validan igual sobre el AST: sólo esquemas http(s)/mailto/tel, una
+ruta relativa o un ancla (#...); cualquier otro (`javascript:`, `vbscript:`, `data:`...) sale con el href
+vivo en HTML y se rechaza. Limitación: realpath no detecta enlaces duros (hardlinks); un hardlink a un
+archivo ajeno dentro del manual pasa.
 """
 
 from __future__ import annotations
@@ -28,9 +32,20 @@ from pathlib import Path
 
 # El cierre `---` admite fin de archivo (stub sin `\n` final) y bloque vacío.
 YAML_FRONTMATTER_RE = re.compile(r"^---\n(.*?)^---[ \t]*(?:\n|\Z)", re.DOTALL | re.MULTILINE)
-# Imagen remota o embebida: no se toca. Cualquier otro esquema (`file:`...) lo rechaza la validación.
-REMOTE_URL_RE = re.compile(r"^(?:https?:|data:|//)", re.IGNORECASE)
+# Imagen remota (pandoc la descargaría al compilar): se rechaza. `data:` va embebida y se admite; cualquier
+# otro esquema (`file:`...) también se rechaza.
+REMOTE_URL_RE = re.compile(r"^(?:https?:|//)", re.IGNORECASE)
+DATA_URL_RE = re.compile(r"^data:", re.IGNORECASE)
 SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+# Metadatos que puede llevar el documento final. Un bloque YAML a mitad de una sección fusiona claves propias
+# (`css`, `header-includes`, `bibliography`...) que pandoc usa para leer archivos o insertar HTML/TeX.
+ALLOWED_METADATA = {"title", "subtitle", "version", "date", "lang", "toc-title", "toc", "toc-depth", "numbersections"}
+# idioma del brief -> (subtítulo de portada, título de la tabla de contenido). Idiomas admitidos: es, en, pt.
+LANGUAGES = {
+    "es": ("Manual de usuario", "Tabla de contenido"),
+    "en": ("User manual", "Table of contents"),
+    "pt": ("Manual do usuário", "Índice"),
+}
 # ÚNICA fuente del `--from` de pandoc: la leen esta validación y los cuatro pandoc de los scripts shell
 # (DOCX, Typst, XeLaTeX, pdfLaTeX). Validar con otras extensiones que las del motor deja imágenes sin ver
 # (p. ej. con `$..$` como matemática una imagen puede quedar oculta dentro de un nodo Math).
@@ -99,7 +114,11 @@ def split_frontmatter(content: str) -> tuple[dict, str]:
 
 
 class UnsafePath(Exception):
-    """Una ruta del contenido (redactado por agentes) apunta fuera del manual."""
+    """El contenido (redactado por agentes) pide algo que no se admite: ruta fuera del manual, imagen remota, metadatos ajenos."""
+
+
+class UnsupportedLanguage(Exception):
+    """El `idioma` del brief no está en LANGUAGES."""
 
 
 def is_safe_section(path: Path, secciones_dir: Path, label: str) -> bool:
@@ -157,7 +176,7 @@ def decode_local_url(url: str) -> str:
 def adjust_image_paths(body: str, base_dir: Path, manual_root: Path, sandbox_root: Path) -> str:
     """Reescribe las imágenes en línea locales a rutas absolutas (codificadas como URL).
 
-    No decide qué es seguro: eso lo hace `validate_images` sobre el AST del documento final.
+    No decide qué es seguro: eso lo hace `validate_document` sobre el AST del documento final.
     """
     def replace(match: re.Match) -> str:
         alt = match.group(1)
@@ -183,21 +202,43 @@ def adjust_image_paths(body: str, base_dir: Path, manual_root: Path, sandbox_roo
     return IMAGE_REF_RE.sub(replace, body)
 
 
-def image_urls(node):
-    """Todas las URLs de nodos Image del AST de pandoc (cuerpo, tablas, figuras, metadatos)."""
+def node_urls(node, tag: str):
+    """Todas las URLs de nodos `tag` (Image o Link) del AST de pandoc (cuerpo, tablas, figuras, notas, metadatos)."""
     if isinstance(node, dict):
-        if node.get("t") == "Image":
+        if node.get("t") == tag:
             yield node["c"][2][0]
         for value in node.values():
-            yield from image_urls(value)
+            yield from node_urls(value, tag)
     elif isinstance(node, list):
         for item in node:
-            yield from image_urls(item)
+            yield from node_urls(item, tag)
+
+
+# Esquemas que un enlace (o autolink) puede ejecutar al hacer click: cualquier otro esquema se rechaza.
+# `http(s)`/`mailto`/`tel` son los únicos que un manual necesita; relativo (sin esquema) y `#ancla` también se admiten.
+ALLOWED_LINK_SCHEMES = {"http", "https", "mailto", "tel"}
+
+
+def check_link_url(url: str) -> None:
+    """Fail-closed: un href con esquema fuera de la lista (`javascript:`, `vbscript:`, `data:`...) sale vivo en HTML."""
+    if url.startswith("#"):
+        return
+    m = SCHEME_RE.match(url)
+    if m is None:
+        return  # ruta relativa: pandoc no la incrusta ni la ejecuta, sólo la referencia
+    scheme = m.group(0)[:-1].lower()
+    if scheme not in ALLOWED_LINK_SCHEMES:
+        raise UnsafePath(
+            f"enlace con esquema no admitido: {url!r} (admitidos: {', '.join(sorted(ALLOWED_LINK_SCHEMES))}, "
+            "una ruta relativa o #ancla)"
+        )
 
 
 def check_image_url(url: str, sandbox_root: Path) -> None:
-    if REMOTE_URL_RE.match(url):
+    if DATA_URL_RE.match(url):
         return
+    if REMOTE_URL_RE.match(url):
+        raise UnsafePath(f"imagen remota no admitida: {url!r} (pandoc la descargaría al compilar); use una captura local dentro del manual")
     if SCHEME_RE.match(url):
         raise UnsafePath(f"imagen con esquema no admitido: {url!r}")
     path = Path(decode_local_url(url))
@@ -215,8 +256,8 @@ def check_image_url(url: str, sandbox_root: Path) -> None:
         raise UnsafePath(f"imagen fuera del manual ({sandbox_root}) o ruta no canónica: {url!r}")
 
 
-def validate_images(markdown: str, sandbox_root: Path) -> None:
-    """Fail-closed: valida las imágenes tal como las resolverá pandoc, no según la sintaxis del texto."""
+def validate_document(markdown: str, sandbox_root: Path) -> None:
+    """Fail-closed: valida metadatos e imágenes tal como los resolverá pandoc, no según la sintaxis del texto."""
     pandoc = shutil.which("pandoc")
     if pandoc is None:
         raise UnsafePath("pandoc no está en PATH: sin él no se pueden validar las imágenes del manual")
@@ -226,8 +267,14 @@ def validate_images(markdown: str, sandbox_root: Path) -> None:
     )
     if proc.returncode != 0:
         raise UnsafePath(f"pandoc no pudo analizar el Markdown: {proc.stderr.decode('utf-8', 'replace').strip()}")
-    for url in image_urls(json.loads(proc.stdout)):
+    ast = json.loads(proc.stdout)
+    extra = sorted(set(ast.get("meta", {})) - ALLOWED_METADATA)
+    if extra:
+        raise UnsafePath(f"metadatos no permitidos en el contenido de las secciones: {', '.join(extra)}")
+    for url in node_urls(ast, "Image"):
         check_image_url(url, sandbox_root)
+    for url in node_urls(ast, "Link"):
+        check_link_url(url)
 
 
 def extract_brief_metadata(brief_path: Path) -> dict:
@@ -236,12 +283,19 @@ def extract_brief_metadata(brief_path: Path) -> dict:
         return {}
     text = read_file(brief_path)
     fm, _ = split_frontmatter(text)
+    lang = str(fm.get("idioma", "es"))
+    labels = LANGUAGES.get(re.split(r"[-_]", lang.strip().lower())[0])
+    if labels is None:
+        raise UnsupportedLanguage(
+            f"idioma {lang!r} del brief no soportado; admitidos: {', '.join(LANGUAGES)} (con región opcional, p. ej. es-CO)"
+        )
     return {
         "title": str(fm.get("nombre_comercial", "Manual de usuario")),
-        "subtitle": "Manual de usuario",
+        "subtitle": labels[0],
+        "toc-title": labels[1],
         "version": str(fm.get("version", "")),
         "date": str(fm.get("fecha_corte", "")),
-        "lang": str(fm.get("idioma", "es")),
+        "lang": lang,
         "audience": str((fm.get("audiencia") or {}).get("perfil", "")) if isinstance(fm.get("audiencia"), dict) else "",
     }
 
@@ -254,7 +308,7 @@ def yaml_str(value: object) -> str:
 def build_pandoc_yaml(meta: dict) -> str:
     lines = ["---"]
     lines.append(f"title: {yaml_str(meta.get('title', 'Manual de usuario'))}")
-    for key in ("subtitle", "version", "date", "lang"):
+    for key in ("subtitle", "version", "date", "lang", "toc-title"):
         if meta.get(key):
             lines.append(f"{key}: {yaml_str(meta[key])}")
     lines.append("toc: true")
@@ -296,7 +350,11 @@ def main() -> int:
         print("ERROR: no se encontraron secciones para concatenar", file=sys.stderr)
         return 2
 
-    meta = extract_brief_metadata(brief)
+    try:
+        meta = extract_brief_metadata(brief)
+    except UnsupportedLanguage as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     output.parent.mkdir(parents=True, exist_ok=True)
 
     skipped = 0
@@ -309,7 +367,7 @@ def main() -> int:
                 continue
             parts.append("\n\n" + adjust_image_paths(body, path.parent, manual_root, sandbox_root).lstrip("\n"))
         document = build_pandoc_yaml(meta) + "".join(parts)
-        validate_images(document, sandbox_root)
+        validate_document(document, sandbox_root)
     except UnsafePath as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

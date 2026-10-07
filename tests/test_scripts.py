@@ -1,4 +1,4 @@
-"""Tests de compile_docx.sh y compile_pdf.sh como procesos reales."""
+"""Tests de compile_pandoc.sh (--to docx) y compile_pdf.sh como procesos reales."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from fixtures import COMPILE_DOCX, COMPILE_PDF, CONCATENATE, PANDOC_FROM_FILE, REPO, make_manual, write_section
+from fixtures import COMPILE_PANDOC, COMPILE_PDF, CONCATENATE, PANDOC_FROM_FILE, REPO, make_manual, write_section
 
 SYSTEM_BASH = "/bin/bash" if Path("/bin/bash").exists() else "/usr/bin/bash"
-BASIC_TOOLS = ("python3", "dirname", "mktemp", "rm", "cat", "mkdir", "tr", "grep", "wc", "awk", "find", "cp")
+BASIC_TOOLS = ("python3", "dirname", "mktemp", "rm", "cat", "mkdir", "tr", "grep", "wc", "awk", "find", "cp", "tee", "date")
 
 
 def run_script(
@@ -37,6 +37,15 @@ def script_args(m: dict, output: Path) -> list[str]:
         "--brief", str(m["brief"]),
         "--output", str(output),
     ]
+
+
+def pandoc_args(m: dict, output: Path, to: str = "docx") -> list[str]:
+    return [*script_args(m, output), "--to", to]
+
+
+def args_for(script: Path, m: dict, output: Path) -> list[str]:
+    """Argumentos mínimos válidos del script (compile_pandoc.sh exige --to)."""
+    return pandoc_args(m, output) if script == COMPILE_PANDOC else script_args(m, output)
 
 
 class ScriptTestCase(unittest.TestCase):
@@ -69,29 +78,29 @@ class ScriptTestCase(unittest.TestCase):
 
 class TestArguments(ScriptTestCase):
     def test_each_script_without_arguments_exits_2(self):
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             with self.subTest(script=script.name):
                 r = run_script(script, [])
                 self.assertEqual(r.returncode, 2, r.stderr)
 
     def test_each_script_missing_one_argument_exits_2(self):
         m = self.manual()
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             for missing in ("--secciones", "--capturas", "--plan", "--brief", "--output"):
                 with self.subTest(script=script.name, missing=missing):
-                    args = script_args(m, self.root / "salida" / "x")
+                    args = args_for(script, m, self.root / "salida" / "x")
                     i = args.index(missing)
                     del args[i : i + 2]
                     r = run_script(script, args)
                     self.assertEqual(r.returncode, 2, r.stderr)
 
     def test_each_script_unknown_option_exits_2(self):
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             with self.subTest(script=script.name):
                 self.assertEqual(run_script(script, ["--no-existe"]).returncode, 2)
 
     def test_each_script_help_exits_0(self):
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             with self.subTest(script=script.name):
                 r = run_script(script, ["--help"])
                 self.assertEqual(r.returncode, 0)
@@ -109,9 +118,9 @@ class TestMissingTools(ScriptTestCase):
     def test_each_script_without_pandoc_exits_3(self):
         m = self.manual()
         path = self.restricted_path(BASIC_TOOLS)
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             with self.subTest(script=script.name):
-                r = run_script(script, script_args(m, self.root / "salida" / "x"), path=path)
+                r = run_script(script, args_for(script, m, self.root / "salida" / "x"), path=path)
                 self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
 
 
@@ -120,7 +129,7 @@ class TestDocx(ScriptTestCase):
     def test_docx_is_a_valid_zip_with_embedded_media(self):
         m = self.manual()
         out = self.root / "salida" / "manual.docx"
-        r = run_script(COMPILE_DOCX, script_args(m, out))
+        r = run_script(COMPILE_PANDOC, pandoc_args(m, out))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertTrue(zipfile.is_zipfile(out))
         with zipfile.ZipFile(out) as z:
@@ -128,6 +137,18 @@ class TestDocx(ScriptTestCase):
             names = z.namelist()
         self.assertIn("word/document.xml", names)
         self.assertTrue([n for n in names if n.startswith("word/media/")], names)
+
+
+    def test_toc_title_and_subtitle_follow_the_brief_language(self):
+        m = self.manual("---\nnombre_comercial: Acme\nidioma: en\n---\n")
+        out = self.root / "salida" / "manual.docx"
+        r = run_script(COMPILE_PANDOC, pandoc_args(m, out))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        with zipfile.ZipFile(out) as z:
+            xml = z.read("word/document.xml").decode("utf-8")
+        self.assertIn("Table of contents", xml)
+        self.assertIn("User manual", xml)
+        self.assertNotIn("Tabla de contenido", xml)
 
 
 @unittest.skipUnless(shutil.which("pandoc"), "pandoc no instalado")
@@ -138,7 +159,7 @@ class TestDocxUntrustedMarkdown(ScriptTestCase):
             prepare(m)
         write_section(m["secciones"], "S01-intro.md", content)
         out = self.root / "salida" / "manual.docx"
-        return run_script(COMPILE_DOCX, [*script_args(m, out), *extra_args]), out
+        return run_script(COMPILE_PANDOC, [*pandoc_args(m, out), *extra_args]), out
 
     def reference_docx(self, *media: str) -> Path:
         """Plantilla del cliente (archivo de confianza) con medios propios en word/media/."""
@@ -297,6 +318,56 @@ class TestTypst(ScriptTestCase):
         self.assertFalse(out.exists())
 
 
+TEMPLATE = REPO / "assets" / "manual-template.typ"
+
+
+@unittest.skipUnless(shutil.which("typst") and shutil.which("pandoc") and shutil.which("pdftotext"), "typst, pandoc o pdftotext no instalado")
+class TestTypstLanguage(ScriptTestCase):
+    """El idioma del brief llega a Typst: el título de la tabla de contenido sale traducido."""
+
+    TOC_TITLE = {"es": "Índice", "en": "Contents", "pt": "Sumário"}  # `outline(title: auto)` de Typst 0.15
+
+    def pdf_text(self, lang: str) -> str:
+        m = self.manual(f"---\nnombre_comercial: Acme\nidioma: {lang}\n---\n")
+        out = self.root / "salida" / "manual.pdf"
+        r = run_script(COMPILE_PDF, script_args(m, out))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return subprocess.run(["pdftotext", str(out), "-"], capture_output=True, text=True).stdout
+
+    def test_toc_title_follows_the_brief_language(self):
+        base = self.root
+        for lang, title in self.TOC_TITLE.items():
+            with self.subTest(lang=lang):
+                self.root = base / lang
+                self.root.mkdir()
+                text = self.pdf_text(lang)
+                self.assertIn(title, text)
+                for other in set(self.TOC_TITLE.values()) - {title}:
+                    self.assertNotIn(other, text)
+
+    def test_language_with_region_uses_the_primary_language(self):
+        self.assertIn("Sumário", self.pdf_text("pt-BR"))
+
+    def test_template_does_not_break_with_an_invented_or_malformed_lang(self):
+        # typst rechaza `klingon`/`es-CO` en text(lang:): la plantilla los normaliza en vez de abortar
+        body = TEMPLATE.read_text(encoding="utf-8") + "\n= Uno\nHola\n"
+        (self.root / "t.typ").write_text(body, encoding="utf-8")
+        for lang in ("klingon", "es-CO", "", "xx"):
+            with self.subTest(lang=lang):
+                r = subprocess.run(
+                    ["typst", "compile", "--root", str(self.root), "--input", f"lang={lang}", str(self.root / "t.typ"), str(self.root / "o.pdf")],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertTrue((self.root / "o.pdf").is_file())
+
+    def test_template_without_lang_input_defaults_to_spanish(self):
+        (self.root / "t.typ").write_text(TEMPLATE.read_text(encoding="utf-8") + "\n= Uno\nHola\n", encoding="utf-8")
+        r = subprocess.run(["typst", "compile", "--root", str(self.root), str(self.root / "t.typ"), str(self.root / "o.pdf")], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Índice", subprocess.run(["pdftotext", str(self.root / "o.pdf"), "-"], capture_output=True, text=True).stdout)
+
+
 class TestPdfFailureModes(ScriptTestCase):
     FAIL = "exit 1"
 
@@ -371,6 +442,68 @@ class TestPdfFailureModes(ScriptTestCase):
                 self.assertEqual("monofont=DejaVu Sans Mono" in call, mono, call)
 
 
+class TestCompilationLog(ScriptTestCase):
+    """Ambos scripts escriben salida/compilacion.log con lo que muestran por consola, sin perder su rc."""
+
+    def log(self) -> str:
+        return (self.root / "salida" / "compilacion.log").read_text(encoding="utf-8")
+
+    def test_successful_run_writes_the_log(self):
+        m = self.manual()
+        r = run_script(COMPILE_PANDOC, pandoc_args(m, self.root / "salida" / "manual.docx"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("[1/3] Concatenando", self.log())
+        self.assertIn("OK — DOCX generado", self.log())
+
+    def test_log_holds_exactly_what_the_console_shows(self):
+        m = self.manual()
+        r = run_script(COMPILE_PANDOC, pandoc_args(m, self.root / "salida" / "manual.docx"))
+        shown = {l for l in (r.stdout + r.stderr).splitlines() if l.strip()}
+        logged = {l for l in self.log().splitlines() if l.strip() and not l.startswith("=== ")}
+        self.assertTrue(shown)
+        self.assertEqual(logged, shown)
+
+    def test_each_run_appends_a_header_naming_the_script(self):
+        m = self.manual()
+        out = self.root / "salida" / "manual.docx"
+        run_script(COMPILE_PANDOC, pandoc_args(m, out))
+        run_script(COMPILE_PANDOC, pandoc_args(m, out, "html"))
+        headers = [l for l in self.log().splitlines() if l.startswith("=== ")]
+        self.assertEqual(len(headers), 2, headers)
+        self.assertTrue(all("compile_pandoc.sh" in h for h in headers), headers)
+
+    def assert_rc_and_log(self, script, args, expected_rc, fragment, path=None):
+        r = run_script(script, args, path=path)
+        self.assertEqual(r.returncode, expected_rc, r.stdout + r.stderr)
+        self.assertIn(fragment, r.stderr)  # sigue llegando a la consola
+        self.assertIn(fragment, self.log())
+
+    def test_concatenation_error_keeps_rc_2_and_is_logged(self):
+        m = self.manual()
+        write_section(m["secciones"], "S01-intro.md", "![x](/etc/hostname)\n")
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
+            with self.subTest(script=script.name):
+                self.assert_rc_and_log(script, args_for(script, m, self.root / "salida" / "x"), 2, "imagen fuera del manual")
+
+    def test_docx_media_error_keeps_rc_7_and_is_logged(self):
+        m = self.manual()
+        (m["capturas"] / "nota.txt").write_text("NO-ES-UNA-IMAGEN", encoding="utf-8")
+        write_section(m["secciones"], "S01-intro.md", "![n](../capturas/nota.txt)\n")
+        self.assert_rc_and_log(COMPILE_PANDOC, pandoc_args(m, self.root / "salida" / "manual.docx"), 7, "no son imágenes")
+
+    def test_pdf_without_engines_keeps_rc_4_and_is_logged(self):
+        m = self.manual()
+        path = self.restricted_path(("pandoc",) + BASIC_TOOLS)
+        self.assert_rc_and_log(
+            COMPILE_PDF, script_args(m, self.root / "salida" / "manual.pdf"), 4, "no se pudo generar el PDF", path
+        )
+
+    def test_pdf_symlink_rejection_keeps_rc_6_and_is_logged(self):
+        m = self.manual()
+        (m["capturas"] / "enlace.png").symlink_to(self.root)
+        self.assert_rc_and_log(COMPILE_PDF, script_args(m, self.root / "salida" / "manual.pdf"), 6, "enlaces simbólicos")
+
+
 SECRET_DIR_MARK = "SECRETO-FUERA-DEL-MANUAL"
 HOSTILE_MD = (
     "Texto VISIBLE-NORMAL.\n\n"
@@ -410,6 +543,30 @@ class TestLatexUntrustedMarkdown(ScriptTestCase):
 
     def test_pdflatex_does_not_receive_raw_tex_or_math_from_markdown(self):
         self.assert_no_executable_tex(self.run_capturing_tex("pdflatex"))
+
+
+class TestLegitimateLinksCompileInAllFormats(ScriptTestCase):
+    """Control positivo de la validación de esquema de enlaces: lo permitido sigue compilando en los 4 formatos."""
+
+    LINKS = "[sitio](https://example.com) [correo](mailto:a@example.com) [tel](tel:+123) [rel](../README.md) [ancla](#intro)"
+
+    @unittest.skipUnless(shutil.which("pandoc"), "pandoc no instalado")
+    def test_http_mailto_tel_relative_and_anchor_links_compile(self):
+        base = self.root
+        outputs = {"docx": "manual.docx", "html": "manual.html", "gfm": "manual.md", "pdf": "manual.pdf"}
+        for to, name in outputs.items():
+            with self.subTest(to=to):
+                self.root = base / to
+                self.root.mkdir()
+                m = self.manual()
+                write_section(m["secciones"], "S01-intro.md", f"# Intro\n\n{self.LINKS}\n")
+                out = self.root / "salida" / name
+                if to == "pdf":
+                    r = run_script(COMPILE_PDF, script_args(m, out))
+                else:
+                    r = run_script(COMPILE_PANDOC, pandoc_args(m, out, to))
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertTrue(out.exists())
 
 
 class TestSymlinksAreRejected(ScriptTestCase):
@@ -563,17 +720,17 @@ class TestOneSourceOfTruthForPandocFrom(unittest.TestCase):
     """Clase de defecto: la validación y cada motor deben parsear el Markdown con las MISMAS extensiones."""
 
     def test_the_shared_value_is_the_restrictive_one(self):
-        self.assertEqual(shared_from(), "markdown-raw_tex-raw_attribute-tex_math_dollars")
+        self.assertEqual(shared_from(), "markdown-raw_tex-raw_attribute-tex_math_dollars-raw_html-native_divs-native_spans-bracketed_spans-fenced_divs-link_attributes-header_attributes-fenced_code_attributes-inline_code_attributes")
 
     def test_every_pandoc_from_in_the_shell_scripts_is_the_shared_variable(self):
-        expected = {COMPILE_DOCX: 1, COMPILE_PDF: 3}  # DOCX; Typst, XeLaTeX y pdfLaTeX
+        expected = {COMPILE_PANDOC: 1, COMPILE_PDF: 3}  # DOCX; Typst, XeLaTeX y pdfLaTeX
         for script, count in expected.items():
             with self.subTest(script=script.name):
                 found = re.findall(r'--from=("[^"]*"|\S+)', script.read_text(encoding="utf-8"))
                 self.assertEqual(found, ['"$PANDOC_FROM"'] * count)
 
     def test_shell_scripts_read_the_shared_file(self):
-        for script in (COMPILE_DOCX, COMPILE_PDF):
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
             with self.subTest(script=script.name):
                 self.assertIn('PANDOC_FROM="$(<"$SCRIPT_DIR/pandoc-from.txt")"', script.read_text(encoding="utf-8"))
 
@@ -585,7 +742,8 @@ class TestOneSourceOfTruthForPandocFrom(unittest.TestCase):
 
     def test_every_pandoc_command_in_the_skill_uses_the_shared_value(self):
         skill = (REPO / "skills" / "manual-compiler" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertEqual(re.findall(r"pandoc --from=(\S+)", skill), [shared_from()] * 4)  # DOCX, Typst, XeLaTeX, pdfLaTeX
+        # DOCX, HTML, GFM, Typst, XeLaTeX, pdfLaTeX
+        self.assertEqual(re.findall(r"pandoc --from=(\S+)", skill), [shared_from()] * 6)
 
 
 class TestSkillDocumentsTheScripts(unittest.TestCase):
@@ -595,7 +753,7 @@ class TestSkillDocumentsTheScripts(unittest.TestCase):
     def setUpClass(cls):
         cls.skill = (REPO / "skills" / "manual-compiler" / "SKILL.md").read_text(encoding="utf-8")
         cls.pdf = COMPILE_PDF.read_text(encoding="utf-8")
-        cls.docx = COMPILE_DOCX.read_text(encoding="utf-8")
+        cls.docx = COMPILE_PANDOC.read_text(encoding="utf-8")
 
     def test_every_image_extension_the_docx_check_accepts_is_documented(self):
         (block,) = re.findall(r"IMAGE_EXTENSIONS = \{(.*?)\}", self.docx, re.DOTALL)
@@ -614,6 +772,61 @@ class TestSkillDocumentsTheScripts(unittest.TestCase):
         for code in sorted(codes - {0}):
             with self.subTest(code=code):
                 self.assertRegex(table, rf"(?m)^\| {code} \|", msg=f"rc {code} sin documentar")
+
+
+def repo_text_files():
+    skip = {".git", "__pycache__"}
+    for path in sorted(REPO.rglob("*")):
+        if path.is_file() and not skip & set(path.relative_to(REPO).parts) and path.suffix in {".md", ".sh", ".py", ".typ", ".json"}:
+            yield path
+
+
+class TestDocsMatchTheScripts(unittest.TestCase):
+    """Lo que los SKILL y comandos prometen es lo que los scripts hacen."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.compiler = (REPO / "skills" / "manual-compiler" / "SKILL.md").read_text(encoding="utf-8")
+        cls.command = (REPO / "commands" / "manual-compile.md").read_text(encoding="utf-8")
+        cls.script = COMPILE_PANDOC.read_text(encoding="utf-8")
+
+    def test_the_old_script_name_is_gone_everywhere(self):
+        old = "compile_" + "docx"
+        self.assertEqual([str(p.relative_to(REPO)) for p in repo_text_files() if old in p.read_text(encoding="utf-8")], [])
+
+    def test_skill_and_command_document_every_format_of_compile_pandoc(self):
+        formats = re.search(r"^\s+(docx(?:\|\w+)+)\)\s*;;", self.script, re.MULTILINE).group(1)
+        for fmt in formats.split("|"):
+            with self.subTest(fmt=fmt):
+                self.assertIn(f"--to {fmt}", self.compiler)
+                self.assertIn(f"--to {fmt}", self.command)
+
+    def test_compile_stage_defers_the_page_tolerance_to_the_verifier(self):
+        # el ±20% antiguo contradecía el ±40% del verificador; la tolerancia vive sólo en manual-verifier
+        for path in [*(REPO / "commands").glob("*.md"), *(REPO / "skills").rglob("*.md")]:
+            with self.subTest(file=str(path.relative_to(REPO))):
+                self.assertNotIn("±20", path.read_text(encoding="utf-8"))
+        self.assertEqual(re.findall(r"±\s*\d+\s*%", self.compiler), [])
+        self.assertEqual(re.findall(r"±\s*\d+\s*%", self.command), [])
+        verifier = (REPO / "skills" / "manual-verifier" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertEqual(re.findall(r"±\s*\d+\s*%", verifier), ["±40%"])
+        self.assertIn("manual-verifier", self.compiler)  # el compilador remite al verificador
+        self.assertIn("manual-verify", self.command)
+
+    def test_compiler_skill_promises_only_what_the_scripts_do(self):
+        self.assertNotRegex(self.compiler, r"(?i)inserta\s+marcas")
+        self.assertIn("compilacion.log", self.compiler)
+        for script in (COMPILE_PANDOC, COMPILE_PDF):
+            self.assertIn("compilacion.log", script.read_text(encoding="utf-8"))
+
+    def test_brief_template_documents_the_web_formats(self):
+        brainstormer = (REPO / "skills" / "manual-brainstormer" / "SKILL.md").read_text(encoding="utf-8")
+        block = brainstormer[brainstormer.index("\nformato:\n"):]
+        block = block[: block.index("\n\n")]
+        for key in ("docx", "pdf", "html", "markdown"):
+            self.assertRegex(block, rf"(?m)^  {key}: true \| false", key)
+        self.assertIn("formato.html", self.command)
+        self.assertIn("formato.markdown", self.command)
 
 
 if __name__ == "__main__":
