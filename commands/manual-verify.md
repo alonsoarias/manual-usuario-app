@@ -1,13 +1,13 @@
 ---
-description: Ejecuta sólo la fase 7 del workflow de manuales — verificación de calidad obligatoria con 10 checks (C1-C10). Produce verificacion.md y un veredicto APROBADO o BLOQUEADO. Esta fase se ejecuta SIEMPRE, incluso en modo rápido. Sin este informe, el manual no se considera entregable.
+description: Ejecuta sólo la fase 7 del workflow de manuales — verificación de calidad obligatoria con 11 checks (C1-C11). Produce verificacion.md y un veredicto APROBADO o BLOQUEADO (invocado directamente es siempre una pasada completa, `alcance: completa`). Esta fase se ejecuta SIEMPRE, incluso en modo rápido. Sin este informe, el manual no se considera entregable.
 argument-hint: ""
 ---
 
 # Fase 7 — Verificación de calidad
 
-Usa la skill `manual-verifier`. Ejecuta los 10 checks listados abajo y produce el informe en `verificacion.md`. El informe completo se muestra al usuario, no sólo el veredicto.
+Usa la skill `manual-verifier`. Ejecuta los 11 checks listados abajo y produce el informe en `verificacion.md`. El informe completo se muestra al usuario, no sólo el veredicto.
 
-## Los 10 checks
+## Los 11 checks
 
 | # | Check | Bloqueante |
 |---|-------|------------|
@@ -21,6 +21,7 @@ Usa la skill `manual-verifier`. Ejecuta los 10 checks listados abajo y produce e
 | C8 | DOCX abre sin error | Sí |
 | C9 | PDF tiene texto seleccionable (>100 palabras vía pdftotext) | Sí |
 | C10 | TOC presente con al menos 1 entrada por sección | Sí |
+| C11 | Capturas de pasos accionables anotadas | Sí |
 
 ## Pre-requisitos
 
@@ -32,8 +33,8 @@ Usa la skill `manual-verifier`. Ejecuta los 10 checks listados abajo y produce e
 
 `verificacion.md` con:
 
-- Frontmatter (fecha, veredicto, totales por estado).
-- Tabla resumen con los 10 checks y su estado.
+- Frontmatter (fecha, veredicto, `ronda`, `alcance`, totales por estado). Este comando es siempre una pasada completa (`alcance: completa`), por lo que solo emite `APROBADO` o `BLOQUEADO`. El tercer veredicto, `PENDIENTE-PASADA-COMPLETA`, solo lo emite una re-verificación acotada dentro del bucle de corrección del orquestador y nunca es final.
+- Tabla resumen con los 11 checks y su estado.
 - Detalle por check con datos concretos y, si fallan, acción recomendada.
 - Lista de advertencias no bloqueantes.
 - Recomendación final: si APROBADO, listar la entrega; si BLOQUEADO, indicar qué fase re-ejecutar.

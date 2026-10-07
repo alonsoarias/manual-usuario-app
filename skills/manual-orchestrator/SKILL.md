@@ -41,6 +41,7 @@ Todo el manual vive en una carpeta única para garantizar reproducibilidad y fac
 
 ```
 manual-{slug-app}-{YYYY-MM-DD}/
+├── estado.md                       (progreso del workflow, ver "Estado del workflow")
 ├── 00-discovery.md                 (opcional, ver "Discovery preliminar")
 ├── 01-brief.md
 ├── 02-plan.md
@@ -74,7 +75,16 @@ El brainstormer registra el resultado del discovery en el campo `discovery_reali
 
 - `slug-app` se deriva del nombre comercial recogido en la fase 1, en kebab-case ASCII (sin acentos ni espacios).
 - `YYYY-MM-DD` es la fecha local del día en que arranca el flujo. No cambia durante la ejecución.
-- Si la carpeta ya existe, ofrecer al usuario continuar (reusa los artefactos existentes) o empezar de cero (renombra la anterior con sufijo `.bak-{HHMMSS}`).
+- Si la carpeta ya existe, ofrecer al usuario continuar (reusa los artefactos existentes, retomando según `estado.md`) o empezar de cero (renombra la anterior con sufijo `.bak-{HHMMSS}`).
+
+## Estado del workflow
+
+`estado.md` vive en la carpeta de **este** manual (nunca global ni compartida entre manuales) y es el mapa de recuperación si la sesión se interrumpe o se compacta. El orquestador lo actualiza al cerrar cada fase y cada ronda de corrección, en el mismo turno.
+
+- Primera línea: `# Estado — manual-{slug-app}-{YYYY-MM-DD}`. Si al continuar la primera línea nombra otra carpeta, no es el estado de este manual: ignorarlo.
+- Una línea por hito, sin prosa: `Fase 3: completa (03-inventario.md, aprobada por el usuario)`, `Fase 7: ronda 2/5 acotada (3 cerrados, 1 abierto — C2; cambió: fase 4 re-ejecutada para S07; falló: captura sin resaltado; ver verificacion-ronda-2.md)`. La línea de ronda lleva siempre «cambió» y «falló» (mínimo para que la ronda siguiente sepa lo intentado).
+- Al continuar, retomar en la primera fase sin línea `completa`; una fase con última línea de ronda está en medio del bucle de corrección: seguir en la ronda siguiente.
+- Si `estado.md` y los artefactos discrepan, mandan los artefactos (regla 2): reverificar el artefacto y corregir el estado.
 
 ## Reglas de transición entre fases
 
@@ -120,8 +130,19 @@ No avanzar sin respuesta del usuario, salvo en modo rápido.
 Al terminar la fase 7, mostrar:
 
 1. Tabla resumen de las 7 fases con estado (✓ / ✗).
-2. Veredicto del verificador (`APROBADO` / `BLOQUEADO`).
+2. Veredicto final del verificador (`APROBADO` / `BLOQUEADO`; `PENDIENTE-PASADA-COMPLETA` es intermedio y siempre dispara la pasada completa del paso 5 del bucle, nunca se muestra como final).
 3. Rutas absolutas de `manual.docx` y `manual.pdf` si están presentes.
 4. Lista de advertencias no bloqueantes que el usuario debería revisar manualmente.
 
-Si el veredicto es `BLOQUEADO`, no afirmar que el manual está terminado. Indicar exactamente qué check falló y qué fase debe re-ejecutarse.
+Si el veredicto es `BLOQUEADO`, no afirmar que el manual está terminado. Indicar exactamente qué check falló y qué fase debe re-ejecutarse, y entrar en el bucle de corrección.
+
+## Bucle de corrección tras `BLOQUEADO`
+
+Una **ronda** = una corrección acotada + una re-verificación acotada. Máximo **5 rondas** por manual. Numeración: la verificación inicial (`verificacion.md` tras la fase 7) es la **ronda 0**; la ronda N es la que sigue a la N-ésima corrección. Este contador es independiente del límite de 3 iteraciones por sección de `manual-writer` (que ocurre antes de aceptar un borrador).
+
+1. **Corrección acotada.** Re-ejecutar solo la fase que el informe señala y solo sobre lo afectado (las secciones o capturas citadas, no el manual entero), pasando los hallazgos del informe textuales. Luego re-ejecutar las fases posteriores que consumen lo cambiado (típicamente la 6). El orquestador no corrige contenido él mismo: delega a la skill de la fase.
+2. **Mismo ejecutor en las rondas 1-3.** Reanudar el subagente que redactó o capturó lo afectado, que conserva el contexto de lo que hizo; si no puede reanudarse, uno fresco con los hallazgos y el estado. En las rondas 4-5, un subagente fresco que reciba lo intentado (las líneas de ronda de `estado.md` y los `verificacion-ronda-N.md`): un fallo que sobrevive a tres rondas suele ser un error de enfoque, no de detalle.
+3. **Re-verificación acotada.** Invocar `manual-verifier` indicando la ronda, los hallazgos abiertos y los archivos cambiados (sección "Re-verificación tras una corrección" del verificador). Un hallazgo nuevo en lo que cambió entra en la lista abierta; una observación sobre lo no tocado, si es de un check no bloqueante, se anota como advertencia y no alarga el bucle; si es de un check bloqueante, se registra como «pendiente para la pasada completa» (no se degrada a advertencia). Al terminar cada ronda N, copiar `verificacion.md` a `verificacion-ronda-N.md` (se conserva uno por ronda; el inicial queda como ronda 0).
+4. **Registro.** Añadir a `estado.md` la línea de la ronda antes de la siguiente, con qué se cambió y por qué falló (formato en «Estado del workflow»).
+5. **Cierre.** Una re-verificación acotada sin bloqueantes abiertos devuelve `PENDIENTE-PASADA-COMPLETA` (no es `APROBADO`): invocar entonces al verificador para una pasada completa de todos los checks (`alcance: completa`); solo esa pasada puede emitir `APROBADO`. La pasada completa hereda el `ronda: N` de la ronda en que corre y se guarda como `verificacion-ronda-N-completa.md` para no pisar la acotada. `PENDIENTE-PASADA-COMPLETA` es siempre intermedio: nunca es el estado final. Si la pasada completa falla (incluidos los «pendientes» del paso 3), abre la ronda siguiente con esos hallazgos como lista abierta; si ya se estaba en la ronda 5, cuenta como el corte del paso 6 (no hay ronda 6).
+6. **Corte en la ronda 5.** Si tras la ronda 5 (incluida su pasada completa) siguen bloqueantes abiertos, **parar**. Mostrar al usuario los hallazgos abiertos, qué se intentó en cada ronda y la fase que el informe señala, y esperar su decisión (replantear el plan, ajustar el alcance o llevarse los archivos tal cual con el veredicto `BLOQUEADO` a la vista, sin afirmar que el manual está terminado). No iniciar una ronda 6 ni degradar un check bloqueante a advertencia para cerrar.

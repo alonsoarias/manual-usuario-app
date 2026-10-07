@@ -151,8 +151,10 @@ Si el verificador no puede ejecutar Pillow, marcar el check como `verificación-
 ```markdown
 ---
 fecha: "YYYY-MM-DD HH:MM"
-veredicto: "APROBADO | BLOQUEADO"
-total_checks: 10
+veredicto: "APROBADO | BLOQUEADO | PENDIENTE-PASADA-COMPLETA"
+ronda: 0                       # 0 = verificación inicial; N = tras la N-ésima corrección (la pasada completa de cierre hereda el N de su ronda)
+alcance: completa              # completa | acotada; solo "completa" puede emitir APROBADO
+total_checks: 11
 checks_pasados: N
 checks_advertencia: N
 checks_fallidos: N
@@ -160,7 +162,7 @@ checks_fallidos: N
 
 # Informe de verificación del manual
 
-**Veredicto:** APROBADO ✅ / BLOQUEADO ❌
+**Veredicto:** APROBADO ✅ / BLOQUEADO ❌ / PENDIENTE-PASADA-COMPLETA ⏳
 
 ## Resumen
 
@@ -223,9 +225,21 @@ Otra ejecución sobre los mismos artefactos debe producir el mismo informe (salv
 
 El verificador no modifica `secciones/`, `capturas/` ni los binarios de `salida/`. Sólo lee y reporta.
 
+## Re-verificación tras una corrección
+
+Cuando el orquestador corrige un `BLOQUEADO` (bucle de corrección), invoca esta skill con la **ronda**, los **hallazgos abiertos** y los **archivos cambiados**. En las rondas intermedias:
+
+- Re-ejecutar los checks que fallaron y todo check cuyos insumos estén entre los archivos cambiados (por ejemplo, cambiar una sección afecta a los checks que leen `secciones/` o el DOCX/PDF recompilado). En duda, re-ejecutar.
+- Los demás checks se reportan como `heredado (ronda N)` con el estado de la ronda en que se ejecutaron por última vez; no se vuelven a correr.
+- Verificar cada hallazgo previo como resuelto o no resuelto, con la misma evidencia que el check original.
+- Un fallo nuevo en lo cambiado se suma a los hallazgos abiertos. Lo que no se tocó no se re-audita en esta pasada.
+- El informe declara `ronda: N` y `alcance: acotada` en el frontmatter y marca los checks heredados.
+
+Un `APROBADO` nunca sale de una pasada acotada. Si una pasada acotada no deja bloqueantes abiertos, su veredicto es `PENDIENTE-PASADA-COMPLETA` (ni `APROBADO` ni `BLOQUEADO`): el orquestador debe pedir entonces una pasada **completa** de todos los checks sin heredar nada (`alcance: completa`); solo su resultado emite `APROBADO` o `BLOQUEADO` (regla 2). Si la acotada deja bloqueantes abiertos, el veredicto es `BLOQUEADO`.
+
 ## Anti-patrones
 
-- Marcar como APROBADO sin ejecutar los 10 checks.
+- Marcar como APROBADO sin ejecutar los 11 checks.
 - Saltarse C8/C9/C10 porque "obviamente está bien".
 - Convertir un check bloqueante en advertencia "para no parar la entrega".
 - Ocultar al usuario el informe.

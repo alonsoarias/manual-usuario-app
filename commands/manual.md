@@ -38,8 +38,8 @@ Si los argumentos incluyen `--rapido`:
 Una carpeta `manual-{slug-app}-{YYYY-MM-DD}/` en el directorio actual con todos los artefactos del workflow. Al terminar, el orquestador reporta:
 
 - Estado de cada fase (✓ / ✗).
-- Veredicto del verificador (`APROBADO` / `BLOQUEADO`).
+- Veredicto final del verificador (`APROBADO` / `BLOQUEADO`). `PENDIENTE-PASADA-COMPLETA` es intermedio: siempre dispara la pasada completa y nunca es el estado final.
 - Rutas absolutas de los binarios producidos.
 - Lista de advertencias no bloqueantes para revisión humana.
 
-Si el veredicto es `BLOQUEADO`, indica qué check falló y a qué fase volver.
+Si el veredicto es `BLOQUEADO`, el orquestador indica qué check falló y entra en el bucle de corrección (máx. 5 rondas; si sigue bloqueado, para y pregunta al usuario).

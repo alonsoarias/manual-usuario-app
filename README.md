@@ -100,11 +100,11 @@ manual-{slug-app}-{YYYY-MM-DD}/
 
 El diseño combina lo mejor de cinco proyectos de la comunidad Claude Code:
 
-- [obra/superpowers](https://github.com/obra/superpowers) — workflow socrático en fases con artefactos verificables, brainstorming previo, planes en tareas atómicas, subagentes frescos por tarea, evidencia antes de afirmaciones.
-- [glincker/readme-generator](https://github.com/glincker/readme-generator) — análisis automático de la app cruzando código y UI.
+- [obra/superpowers](https://github.com/obra/superpowers) — workflow socrático en fases con artefactos verificables, brainstorming previo, planes en tareas atómicas, subagentes frescos por tarea, evidencia antes de afirmaciones, y de `subagent-driven-development` el bucle de corrección acotado (máximo 5 rondas, re-verificación sobre el delta) con registro de progreso por manual (`estado.md`).
+- [GLINCKER/readme-generator](https://github.com/GLINCKER/claude-code-marketplace/tree/main/skills/documentation/readme-generator) — análisis automático de la app cruzando código y UI.
 - [danielrosehill/user-manual-plugin](https://github.com/danielrosehill/user-manual-plugin) — compilación modular DOCX/PDF con Typst preferido y Pandoc fallback.
 - [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) — persona "technical writer senior" en el redactor.
-- [levnikolaevich/ln-100-documents-pipeline](https://github.com/levnikolaevich/ln-100-documents-pipeline) — pipeline modo File sin dependencias externas pesadas.
+- [levnikolaevich/claude-code-skills](https://github.com/levnikolaevich/claude-code-skills) (skills de documentación ln-22 y ln-53) — pipeline modo File sin dependencias externas pesadas.
 
 ## Licencia
 
