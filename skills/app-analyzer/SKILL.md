@@ -76,9 +76,10 @@ discrepancias_detectadas: N
 
 ## 1. Módulos y rutas
 
-| Módulo | Ruta / Pantalla | Tipo de acceso | Roles que acceden | Evidencia |
-|--------|-----------------|----------------|-------------------|-----------|
-| ... | `/dashboard` | autenticado | usuario, admin | `routes/web.php:42` |
+| Módulo | Ruta / Pantalla | Tipo de acceso | Roles que acceden | PII | Evidencia |
+|--------|-----------------|----------------|-------------------|-----|-----------|
+| ... | `/dashboard` | autenticado | usuario, admin | sí | `routes/web.php:42` |
+| ... | `/login` | público | todos | no | `routes/web.php:12` |
 
 ## 2. Formularios y campos
 
@@ -136,7 +137,15 @@ Sin evidencia, no se registra.
 
 El analyzer **no** modifica la app del cliente. Si encuentra un error tipográfico, una traducción faltante o un mensaje inconsistente, lo registra en la sección 6 y deja la decisión al cliente. El redactor de la fase 5 usa el texto literal tal cual.
 
-### R5 — Idioma declarado
+### R5 — Datos personales por pantalla (columna `PII`)
+
+Cada fila de «Módulos y rutas» declara `PII: sí|no`: `sí` si la pantalla muestra o puede mostrar datos de personas (nombres, correos, teléfonos, documentos, tarjetas, IBAN, claves de API, fotos de perfil), aunque en el ambiente de inspección aparezcan vacíos o sintéticos. Una pantalla autenticada con el nombre del usuario en la cabecera es `sí`. En duda, `sí`.
+
+El valor manda sobre el plan: el capturador enmascara toda pantalla `PII: sí` salvo excepción explícita del PO (`screenshot-capturer/references/pii-masking.md`), y el check C13 de la fase 7 lo lee desde aquí por el valor literal de «Ruta / Pantalla». Esquema v2: un inventario sin la columna `PII` bloquea C13.
+
+No copiar al inventario los datos personales vistos durante la inspección: el inventario registra etiquetas y textos de la UI, no los valores de las personas (`"Correo electrónico"`, no `ana.perez@cliente.co`).
+
+### R6 — Idioma declarado
 
 El brief declara `idioma`. Si en la inspección aparecen strings en otros idiomas (mensajes del sistema en inglés mientras el manual será en español), reportar como discrepancia y, salvo indicación contraria, transcribir lo que aparece en pantalla.
 
@@ -144,6 +153,7 @@ El brief declara `idioma`. Si en la inspección aparecen strings en otros idioma
 
 - Toda sección del plan tiene al menos una entrada en "Módulos y rutas" o en "Formularios y campos" (excepto secciones de tipo `portada`, `tabla-contenido-auto`, `glosario`, `soporte`, `apendice`).
 - Cada tabla tiene la columna "Evidencia" rellena en todas las filas.
+- Cada fila de "Módulos y rutas" tiene `PII` con `sí` o `no`.
 - "Discrepancias detectadas" coincide con el contador del frontmatter.
 - Si `nivel_inspeccion = 0`, advertencia explícita en el frontmatter (`fuente_principal: declarado-cliente`).
 

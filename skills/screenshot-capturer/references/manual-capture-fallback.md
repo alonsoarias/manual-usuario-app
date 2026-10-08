@@ -54,7 +54,7 @@ Por favor, tome cada captura siguiendo las instrucciones de su bloque, guarde el
 
 **Riesgos a evitar:**
 
-- No incluir información personal real en autocompletado de campos.
+- No incluir información personal real en autocompletado de campos. Sin DOM no hay script de enmascarado: capturar con una cuenta de demo o seguir el punto 3 de «Decisión» en `pii-masking.md`.
 - Cerrar notificaciones de sistema antes de capturar.
 
 ---

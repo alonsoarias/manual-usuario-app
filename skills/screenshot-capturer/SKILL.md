@@ -97,7 +97,7 @@ Heredar del plan (`ambiente_capturas`). Por defecto:
 
 ### Estado de la app
 
-- **Sin datos personales reales.** Si la app contiene información de personas concretas, el `screenshot-capturer` debe poblar el ambiente con datos sintéticos antes de capturar, o pedir al cliente un ambiente de demo. Nunca capturar datos reales sin autorización explícita.
+- **Sin datos personales reales en ningún PNG de `capturas/`.** Preferir un ambiente de demo con datos sintéticos (pedirlo al cliente). Si la pantalla muestra datos de personas, se sustituyen en la pantalla **antes** de capturar, nunca se tachan después: decisión, script y procedimiento en `references/pii-masking.md` (única fuente). Se enmascara si el plan dice `enmascarar: sí` **o** el inventario marca la pantalla con `pii: sí`; la única forma de no hacerlo en una pantalla `pii: sí` es una `excepción: <motivo>` declarada en el plan y aprobada por el PO. El capturador puede enmascarar de más, nunca de menos.
 - **Idioma de la UI = idioma del manual.** Si el ambiente está en otro idioma, cambiarlo o reportar como bloqueante.
 - **Estado limpio.** Para tareas que empiezan desde cero, capturar antes de cualquier interacción. Para flujos parciales, reproducir el estado mínimo necesario.
 - **Sin notificaciones del SO.** Cerrar toasts, banners y modales no relacionados antes de capturar.
@@ -211,9 +211,10 @@ No imponer software de anotación; sí dejar las especificaciones (color, grosor
    1. Navegar a la pantalla (con login previo si la pantalla está autenticada).
    2. Llenar formularios o disparar el estado declarado.
    3. Esperar que termine el render (`browser_wait_for`, `await page.waitForLoadState('networkidle')`, etc.).
-   4. Aplicar anotaciones si el plan las pide.
-   5. Capturar con el viewport declarado.
-   6. Guardar con el nombre exacto del plan.
+   4. Enmascarar datos personales si el plan (`enmascarar`) o el inventario (`pii`) lo piden (`references/pii-masking.md`).
+   5. Aplicar anotaciones si el plan las pide (independientes del paso 4: una captura puede llevar las dos).
+   6. Capturar con el viewport declarado.
+   7. Guardar con el nombre exacto del plan.
 5. Verificar que **todos** los archivos PNG del plan existen en `capturas/`.
 6. Generar `capturas/MANIFIESTO.md` con la lista verificada.
 7. Si quedan capturas pendientes, generar `capturas/INSTRUCCIONES.md` con sus pasos manuales y reportar al usuario qué falta.
@@ -233,12 +234,15 @@ fecha: "YYYY-MM-DD HH:MM"
 
 # Manifiesto de capturas
 
-| Archivo | Sección | Tamaño px | Estado | Herramienta | Anotaciones |
-|---------|---------|-----------|--------|-------------|-------------|
-| S03-pantalla-login.png | S03 | 1366x768 | OK | playwright-mcp | sí |
-| S03-pantalla-login-error.png | S03 | 1366x768 | OK | playwright-mcp | sí |
-| S05-dashboard-vacio.png | S05 | 1366x768 | PENDIENTE-MANUAL | manual | n/a |
+| Archivo | Sección | Pantalla | Tamaño px | Estado | Herramienta | Anotaciones | Enmascarado |
+|---------|---------|----------|-----------|--------|-------------|-------------|-------------|
+| S03-pantalla-login.png | S03 | /login | 1366x768 | OK | playwright-mcp | sí | no |
+| S05-paso-2-clic-asignar.png | S05 | /usuarios | 1366x768 | OK | playwright-mcp | sí | sí |
+| S05-dashboard-vacio.png | S05 | /dashboard | 1366x768 | PENDIENTE-MANUAL | manual | n/a | sí |
 ```
+
+- `Pantalla`: el valor literal de la columna «Ruta / Pantalla» del inventario (sin comillas invertidas) para la pantalla capturada. El check C13 lo usa para leer `pii` del inventario: una pantalla que no está en el inventario bloquea C13.
+- `Enmascarado`: `sí` | `no` | `excepción: <motivo>` (copiado del plan). En una pantalla con `pii: sí` solo valen `sí` o la excepción; `no` bloquea C13. Esquema v2: un manifiesto sin estas dos columnas bloquea C13.
 
 ## Validaciones antes de cerrar la fase
 
@@ -264,7 +268,8 @@ No fabriques cuando puedas reproducir el flujo real con un ambiente de demo acce
 
 - Capturar pantallas no listadas en el plan "por si acaso".
 - Renombrar archivos para que "queden mejor": el plan manda.
-- Subir capturas con datos reales de usuarios sin autorización.
+- Capturar con datos reales y tacharlos después, o guardar en `capturas/` un PNG con datos reales «para tacharlo luego».
+- Dejar sin enmascarar una pantalla `pii: sí` del inventario porque el plan decía `enmascarar: no`.
 - Capturar a resolución 800x600 cuando el plan pide 1366x768.
 - Mezclar idiomas (UI en inglés, manual en español).
 - Saltarse el manifiesto.

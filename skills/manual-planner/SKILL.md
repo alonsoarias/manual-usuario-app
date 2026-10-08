@@ -59,8 +59,8 @@ ambiente_capturas:
 - **Tipo:** {portada | tabla-contenido-auto | introduccion | requisitos | acceso | modulo | tarea-paso-a-paso | troubleshooting | glosario | soporte | apendice}
 - **Audiencia:** {perfil heredado del brief o sub-perfil}
 - **Páginas estimadas:** {número o rango}
-- **Capturas requeridas:** (cada entrada con archivo, descripción, anotación, selector)
-  - `{ID}-{descripcion}.png` — {qué pantalla, en qué estado} — anotación: `ninguna|recuadro|numerada-N|flecha|halo|tachado-datos` — selector: `{CSS o XPath del elemento, vacío si anotación=ninguna}`
+- **Capturas requeridas:** (cada entrada con archivo, descripción, anotación, selector, enmascarar)
+  - `{ID}-{descripcion}.png` — {qué pantalla, en qué estado} — anotación: `ninguna|recuadro|numerada-N|flecha|halo` — selector: `{CSS o XPath del elemento, vacío si anotación=ninguna}` — enmascarar: `sí|no|excepción: {motivo}`
 - **Tareas que cubre:** (sólo si tipo = tarea-paso-a-paso o modulo)
   - {verbo + objeto, copiado literal del brief}
 - **Criterio de hecho:**
@@ -103,7 +103,16 @@ Cada captura del plan declara también **qué anotación lleva**, en una columna
 | `numerada-N` | Varios pasos sobre la misma pantalla, numerados 1..N |
 | `flecha` | Indicar dirección o sub-elemento dentro de un control |
 | `halo` | Resaltar zona ambigua sin un control único |
-| `tachado-datos` | Ocultar PII visible en la captura |
+
+Los datos personales no son una anotación: van en el campo `enmascarar`, independiente, para que una captura pueda llevar a la vez el resaltado de la acción (C11) y el enmascarado (C13). Esquema v2: un plan v1 cuya anotación era el tachado de datos se reescribe como `anotación: ninguna|recuadro|...` + `enmascarar: sí`.
+
+| `enmascarar` | Cuándo |
+|--------------|--------|
+| `sí` | La pantalla muestra o puede mostrar datos de personas: nombres, correos, teléfonos, documentos, tarjetas, IBAN, claves de API, fotos. En duda, `sí` |
+| `no` | Pantalla sin datos de personas (login vacío, configuración general). No es una excepción: si la fase 3 marca la pantalla con `pii: sí`, el capturador enmascara igual |
+| `excepción: {motivo}` | La pantalla tiene datos de personas y el PO decide no enmascararlos, con el motivo (p. ej. «ambiente de demo con datos sintéticos verificados por el cliente»). Única forma de no enmascarar una pantalla `pii: sí`; el PO la aprueba en el checkpoint de la fase 2 y C13 la lista en el informe |
+
+El plan se escribe antes del inventario: por defecto manda el inventario (`pii: sí` ⇒ se enmascara), a prueba de fallos. Detalle en `screenshot-capturer/references/pii-masking.md`.
 
 Si una sección del plan tiene tipo `tarea-paso-a-paso`, la regla es estricta: **cada paso accionable tiene su captura asociada con anotación distinta de `ninguna`**. No se puede tener un paso "Pulse Guardar" cuya captura sea simplemente la pantalla sin marcar dónde está Guardar.
 
@@ -165,6 +174,7 @@ Antes de cerrar la fase 2, verificar:
 - Total de secciones y páginas dentro del rango de la profundidad declarada.
 - Todos los IDs son únicos y correlativos sin huecos.
 - Cada sección tiene al menos un bullet en "Criterio de hecho".
+- Cada captura declara `enmascarar`; toda `excepción` lleva motivo y se muestra al usuario en el checkpoint.
 - Suma de capturas estimadas es coherente con las tablas de calibración por nivel TIC.
 
 Si alguna validación falla, mostrar al usuario el problema y pedir corregir antes de avanzar a la fase 3.

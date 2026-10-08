@@ -23,13 +23,13 @@ Si falta cualquiera, abortar y devolver al usuario a la fase pendiente.
 ## Salida esperada
 
 - `capturas/{ID-seccion}-{descripcion-kebab}.png` para cada captura listada en el plan.
-- `capturas/MANIFIESTO.md` con el listado verificado (archivo, sección, tamaño, herramienta, estado).
+- `capturas/MANIFIESTO.md` con el listado verificado (archivo, sección, pantalla del inventario, tamaño, herramienta, estado, enmascarado).
 - `capturas/INSTRUCCIONES.md` (sólo si hay capturas pendientes manuales).
 
 ## Reglas que aplica la skill
 
 - Nombres de archivo idénticos a los declarados en el plan.
 - Viewport heredado del plan (1366x768 desktop, 375x812 móvil por defecto).
-- Sin información personal real en las capturas.
+- Sin información personal real en las capturas: se sustituye en la pantalla antes de capturar si el plan (`enmascarar: sí`) o el inventario (`PII: sí`) lo marcan; sólo una `excepción: {motivo}` del plan lo evita (`screenshot-capturer/references/pii-masking.md`).
 - Idioma de la UI = idioma declarado en el brief.
 - Anotaciones (flechas, números) por inyección de overlays con `browser_evaluate` o post-proceso con Pillow.

@@ -18,6 +18,7 @@ Usa la skill `manual-planner` para producir el plan a partir del brief aprobado.
 - Frontmatter YAML (`borrador: false`, total de secciones, total de páginas estimadas, ambiente de capturas).
 - Tabla resumen con todas las secciones (ID, título, tipo, audiencia, capturas, páginas, criterio de hecho).
 - Detalle por sección con tareas que cubre, criterio de hecho objetivo, notas.
+- Por captura, `anotación` (resaltado de la acción) y `enmascarar: sí|no|excepción: {motivo}` como campos independientes: una captura puede llevar los dos.
 
 ## Reglas que aplica la skill
 

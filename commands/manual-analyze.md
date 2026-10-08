@@ -22,7 +22,7 @@ Usa la skill `app-analyzer`. La skill detecta el nivel de acceso disponible y ap
 
 `03-inventario.md` con tablas de:
 
-1. Módulos y rutas
+1. Módulos y rutas (con columna `PII: sí|no` por pantalla; en duda, `sí`. La lee el capturador para enmascarar y el check C13)
 2. Formularios y campos (etiquetas literales)
 3. Mensajes del sistema (texto literal)
 4. Roles y permisos

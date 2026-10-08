@@ -106,27 +106,13 @@ evaluate_script  { code: "document.querySelectorAll('.overlay-screenshot').forEa
 ## Desventajas
 
 - **Reproducibilidad baja**: la pestaña depende del estado que el usuario haya dejado. Para pipelines automatizados (CI/CD), preferir Playwright.
-- **Riesgo de capturar datos personales del usuario**: la sesión real puede contener información que no debe aparecer en el manual. Antes de capturar, sanear (cerrar sesión, cambiar a perfil demo, anonimizar con `evaluate_script`).
+- **Riesgo de capturar datos personales del usuario**: la sesión real puede contener información que no debe aparecer en el manual. Preferir un perfil de demo; si no, enmascarar según «Datos personales» (abajo).
 - **Requiere intervención manual**: arrancar Chrome con la flag de debug es un paso adicional.
 - **Menos tools que Playwright**: cobertura más limitada para interacciones complejas (drag-drop, file upload).
 
-## Saneamiento previo a capturar
+## Datos personales
 
-Antes de cada captura desde la sesión real del usuario, ejecutar un check rápido:
-
-```js
-// evaluate_script
-(() => {
-  // Cambiar nombres y emails visibles a placeholders
-  document.querySelectorAll('[data-user-name], .user-name').forEach(el => el.textContent = 'Usuario Demo');
-  document.querySelectorAll('[data-user-email], .user-email').forEach(el => el.textContent = 'demo@example.com');
-  // Ocultar avatares que sean fotos reales
-  document.querySelectorAll('img.avatar, .avatar img').forEach(el => el.style.visibility = 'hidden');
-  return 'sanitizado';
-})()
-```
-
-Adaptar selectores al inventario de la app concreta.
+La sesión real del usuario es justo donde hay datos reales. Antes de cada captura de una pantalla marcada para enmascarar (plan `enmascarar: sí` o inventario `pii: sí`), seguir `pii-masking.md`, procedimiento «con Chrome DevTools MCP»: el mismo script que en Playwright, pasado a `evaluate_script`. No se captura y se tacha después.
 
 ## Cuándo no usar Chrome DevTools MCP
 

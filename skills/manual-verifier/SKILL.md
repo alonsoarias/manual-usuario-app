@@ -14,12 +14,12 @@ Verificar que existen:
 - `salida/manual.docx` (si el brief lo pidió)
 - `salida/manual.pdf` (si el brief lo pidió)
 - `secciones/` con los `.md` redactados
-- `capturas/` con los PNG y `MANIFIESTO.md`
+- `capturas/` con los PNG y `MANIFIESTO.md` (esquema v2: columnas `Pantalla` y `Enmascarado`)
 - `01-brief.md`, `02-plan.md`, `03-inventario.md`
 
 Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los checks.
 
-## Los 12 checks
+## Los 13 checks
 
 | # | Nombre | Bloqueante |
 |---|--------|------------|
@@ -35,6 +35,7 @@ Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los
 | C10 | TOC presente | Sí |
 | C11 | Capturas de pasos accionables anotadas | Sí |
 | C12 | Salidas web (HTML/Markdown) sin rutas locales ni contenido activo | Sí (N/A si el brief no pidió `formato.html` ni `formato.markdown`) |
+| C13 | Datos personales | Sí |
 
 ### C1 — Conteo de secciones (bloqueante)
 
@@ -159,6 +160,37 @@ Si aplica, tras la fase 6 (`manual-compiler` ya debe haber producido `salida/man
 
 No se reimplementa la lógica de detección en el verificador: el rc del script ES el resultado del check.
 
+### C13 — Datos personales (bloqueante)
+
+Un dato personal publicado en un manual no se puede retirar: C13 bloquea siempre que encuentre uno, en el texto o en una captura. Dos partes, las dos obligatorias:
+
+**1. Script** — ejecutar desde la raíz del manual:
+
+```
+python3 skills/manual-verifier/scripts/check_pii.py .
+```
+
+- Texto: `secciones/*.md` y el texto de las salidas presentes en `salida/` (`manual.pdf` con `pdftotext` y `pdfinfo`, `manual.docx` leyendo su XML incluidos los metadatos de `docProps/`, `manual.html`, `manual.md`). Busca correo, teléfono (9-15 dígitos), documento de identidad (CPF, SSN, DNI/NIE con letra, y número tras «cédula / C.C. / documento / DNI / NIT / CPF / pasaporte...»), tarjeta (Luhn), IBAN (mod-97) y token/clave de API. Son los mismos patrones con que `screenshot-capturer/references/pii-masking.md` enmascara las capturas.
+- Capturas: lee `PII` de cada pantalla en `03-inventario.md` y exige, para toda captura de una pantalla `PII: sí`, `Enmascarado: sí` o `excepción: <motivo>` en `capturas/MANIFIESTO.md`. También bloquea: inventario o manifiesto sin esas columnas (esquema v1), una `Pantalla` del manifiesto que no está en el inventario, un valor de `PII` que no sea `sí`/`no` (se trata como `sí`), una excepción sin motivo y un PNG de `capturas/` sin fila en el manifiesto.
+- Resultado: rc 0 → esta parte pasa; rc 1 → falla (cada línea `ERROR:` va al detalle tal cual; el script abrevia el valor, `an…om`, para que `verificacion.md` no sea otra copia del dato); rc 2 → uso incorrecto, también falla. Un PDF que no se puede leer (sin `pdftotext`, archivo corrupto) es `ERROR`, no un pase.
+- Las líneas `PERMITIDO:` y `EXCEPCIÓN:` se copian al detalle del check: son el rastro de cada excepción usada.
+
+Datos que no bloquean (datos ficticios reconocidos):
+
+| Tipo | No bloquea |
+|---|---|
+| Correo | dominios reservados por RFC 2606/6761: `example.com`, `example.net`, `example.org` y sus subdominios; TLD `.example`, `.test`, `.invalid`, `.localhost` |
+| Teléfono | `555-0100` a `555-0199` (rango ficticio de NANP, con o sin `+1` y prefijo de área); `07700 900000-900999` y `020 7946 0000-0999` (rangos para ficción de Ofcom, Reino Unido) |
+| Tarjeta | números de prueba públicos: `4111 1111 1111 1111`, `4242 4242 4242 4242`, `5555 5555 5555 4444`, `3782 822463 10005` |
+| IBAN | ejemplos de documentación: `GB82 WEST 1234 5698 7654 32`, `DE89 3704 0044 0532 0130 00` |
+| Cualquiera | marcadores de relleno: menos de 4 caracteres alfanuméricos distintos (`000 000 0000`, `XXXX`) |
+
+Contactos públicos del cliente (el correo o teléfono de soporte de la sección `soporte`) se declaran uno por línea en `pii-permitidos.txt`, en la raíz del manual, con el formato `valor | motivo` (los dos obligatorios; `#` para comentarios). La coincidencia es exacta (sin espacios, guiones ni paréntesis): permitir `soporte@acme.co` no permite `ana@acme.co`. Lo crea el usuario o el PO, nunca el verificador (R4).
+
+**2. Revisión visual** — el script comprueba la convención del manifiesto, no los píxeles: no hace OCR (no hay `tesseract` en el entorno, y un OCR fallido daría un falso pase). Por eso el verificador abre y mira cada PNG de una pantalla `PII: sí` (incluidas las de `excepción`) y cualquier otro en que sospeche datos de personas, buscando nombres, correos, teléfonos, documentos, fotos de perfil o claves que el enmascarado no tapó. Un dato real visible → C13 falla; el detalle nombra la captura y la zona («cabecera, nombre del usuario»), nunca el dato.
+
+C13 pasa solo si el script devuelve 0 **y** la revisión visual no encuentra nada. Si no se pudo hacer la revisión visual, C13 queda como `verificación-parcial` y el veredicto no puede ser `APROBADO`.
+
 ## Salida obligatoria: `verificacion.md`
 
 ```markdown
@@ -167,7 +199,7 @@ fecha: "YYYY-MM-DD HH:MM"
 veredicto: "APROBADO | BLOQUEADO | PENDIENTE-PASADA-COMPLETA"
 ronda: 0                       # 0 = verificación inicial; N = tras la N-ésima corrección (la pasada completa de cierre hereda el N de su ronda)
 alcance: completa              # completa | acotada; solo "completa" puede emitir APROBADO
-total_checks: 12
+total_checks: 13
 checks_pasados: N
 checks_advertencia: N
 checks_fallidos: N
@@ -253,8 +285,10 @@ Un `APROBADO` nunca sale de una pasada acotada. Si una pasada acotada no deja bl
 
 ## Anti-patrones
 
-- Marcar como APROBADO sin ejecutar los 12 checks (o sin declarar explícitamente N/A el que no aplique).
+- Marcar como APROBADO sin ejecutar los 13 checks (o sin declarar explícitamente N/A el que no aplique).
 - Saltarse C8/C9/C10 porque "obviamente está bien".
+- Pasar C13 con el script en verde sin haber mirado las capturas `PII: sí`.
+- Copiar a `verificacion.md` el dato personal encontrado en vez de su ubicación.
 - Convertir un check bloqueante en advertencia "para no parar la entrega".
 - Ocultar al usuario el informe.
 - Re-ejecutar sólo los checks que pasaron y omitir los que fallaron.

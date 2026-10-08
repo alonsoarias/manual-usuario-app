@@ -1,13 +1,13 @@
 ---
-description: Ejecuta sólo la fase 7 del workflow de manuales — verificación de calidad obligatoria con 12 checks (C1-C12). Produce verificacion.md y un veredicto APROBADO o BLOQUEADO (invocado directamente es siempre una pasada completa, `alcance: completa`). Esta fase se ejecuta SIEMPRE, incluso en modo rápido. Sin este informe, el manual no se considera entregable.
+description: Ejecuta sólo la fase 7 del workflow de manuales — verificación de calidad obligatoria con 13 checks (C1-C13). Produce verificacion.md y un veredicto APROBADO o BLOQUEADO (invocado directamente es siempre una pasada completa, `alcance: completa`). Esta fase se ejecuta SIEMPRE, incluso en modo rápido. Sin este informe, el manual no se considera entregable.
 argument-hint: ""
 ---
 
 # Fase 7 — Verificación de calidad
 
-Usa la skill `manual-verifier`. Ejecuta los 12 checks listados abajo y produce el informe en `verificacion.md`. El informe completo se muestra al usuario, no sólo el veredicto.
+Usa la skill `manual-verifier`. Ejecuta los 13 checks listados abajo y produce el informe en `verificacion.md`. El informe completo se muestra al usuario, no sólo el veredicto.
 
-## Los 12 checks
+## Los 13 checks
 
 | # | Check | Bloqueante |
 |---|-------|------------|
@@ -23,20 +23,21 @@ Usa la skill `manual-verifier`. Ejecuta los 12 checks listados abajo y produce e
 | C10 | TOC presente con al menos 1 entrada por sección | Sí |
 | C11 | Capturas de pasos accionables anotadas | Sí |
 | C12 | Salidas web (HTML/Markdown) sin rutas locales ni contenido activo — `check_web_output.py salida/` | Sí (N/A si el brief no pidió `formato.html` ni `formato.markdown`) |
+| C13 | Datos personales en el texto (secciones/ y salidas compiladas) y capturas de pantallas `PII: sí` enmascaradas — `check_pii.py .` + revisión visual | Sí |
 
 ## Pre-requisitos
 
 - `salida/manual.docx` (si el brief lo pidió)
 - `salida/manual.pdf` (si el brief lo pidió)
 - `salida/manual.html` y/o `salida/manual.md` (si el brief pidió `formato.html`/`formato.markdown`; en ese caso alimentan C12)
-- `secciones/`, `capturas/`, `01-brief.md`, `02-plan.md`, `03-inventario.md`
+- `secciones/`, `capturas/` (con `MANIFIESTO.md` v2), `01-brief.md`, `02-plan.md`, `03-inventario.md` (con columna `PII`); opcional `pii-permitidos.txt` (alimentan C13)
 
 ## Salida esperada
 
 `verificacion.md` con:
 
 - Frontmatter (fecha, veredicto, `ronda`, `alcance`, totales por estado). Este comando es siempre una pasada completa (`alcance: completa`), por lo que solo emite `APROBADO` o `BLOQUEADO`. El tercer veredicto, `PENDIENTE-PASADA-COMPLETA`, solo lo emite una re-verificación acotada dentro del bucle de corrección del orquestador y nunca es final.
-- Tabla resumen con los 12 checks y su estado.
+- Tabla resumen con los 13 checks y su estado.
 - Detalle por check con datos concretos y, si fallan, acción recomendada.
 - Lista de advertencias no bloqueantes.
 - Recomendación final: si APROBADO, listar la entrega; si BLOQUEADO, indicar qué fase re-ejecutar.
