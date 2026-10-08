@@ -1,14 +1,16 @@
 {
   "name": "manual-usuario-app-marketplace",
+  "description": "Marketplace del plugin manual-usuario-app: manuales de usuario profesionales con captura automática de pantallas.",
   "owner": {
-    "name": "manual-usuario-app contributors"
+    "name": "alonsoarias",
+    "url": "https://github.com/alonsoarias"
   },
   "plugins": [
     {
       "name": "manual-usuario-app",
       "source": "./",
-      "description": "Plugin genérico para generar manuales de usuario profesionales (DOCX/PDF) de cualquier aplicación de software, con captura automática de pantallas vía MCP y workflow socrático de 7 fases.",
-      "version": "1.0.0",
+      "description": "Plugin genérico para generar manuales de usuario profesionales (DOCX, PDF, HTML, Markdown) en español, inglés o portugués, de cualquier aplicación de software, con captura automática de pantallas vía MCP, enmascarado de datos personales y workflow socrático de 7 fases con verificación por evidencia.",
+      "version": "2.0.0",
       "license": "MIT",
       "category": "documentation",
       "keywords": [

@@ -1,10 +1,11 @@
 {
   "name": "manual-usuario-app",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "MIT",
-  "description": "Plugin genérico y multi-aplicación para generar manuales de usuario profesionales en DOCX y PDF a partir de cualquier aplicación de software (web, móvil, escritorio o CMS), con captura automática de pantallas vía MCPs de browser y workflow socrático de 7 fases con verificación basada en evidencia.",
+  "description": "Plugin genérico y multi-aplicación para generar manuales de usuario profesionales en DOCX, PDF, HTML y Markdown (español, inglés o portugués) a partir de cualquier aplicación de software (web, móvil, escritorio o CMS), con captura automática de pantallas vía MCPs de browser y workflow socrático de 7 fases con verificación basada en evidencia.",
   "author": {
-    "name": "manual-usuario-app contributors"
+    "name": "alonsoarias",
+    "url": "https://github.com/alonsoarias"
   },
   "homepage": "https://github.com/alonsoarias/manual-usuario-app",
   "repository": "https://github.com/alonsoarias/manual-usuario-app",
@@ -18,6 +19,8 @@
     "chrome-devtools",
     "docx",
     "pdf",
+    "html",
+    "markdown",
     "typst",
     "pandoc",
     "technical-writing"

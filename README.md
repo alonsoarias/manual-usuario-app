@@ -34,7 +34,7 @@ Clonar el repositorio y registrarlo como marketplace local:
 O, si prefieres referenciar por URL Git:
 
 ```
-/plugin marketplace add https://github.com/{owner}/manual-usuario-app
+/plugin marketplace add https://github.com/alonsoarias/manual-usuario-app
 /plugin install manual-usuario-app@manual-usuario-app-marketplace
 ```
 
@@ -59,7 +59,7 @@ Cada comando aislado verifica los pre-requisitos antes de ejecutar (regla 1).
 
 | Dependencia | Para qué | Obligatorio |
 |-------------|----------|-------------|
-| `pandoc` (≥ 2.19) | DOCX, conversión Markdown→Typst | Sí |
+| `pandoc` (≥ 2.19) | DOCX, HTML, GFM, conversión Markdown→Typst | Sí |
 | `python3` (≥ 3.8) | Concatenación, post-proceso | Sí |
 | `Pillow` (Python) | Anotaciones y validación de imágenes | Recomendado |
 | `typst` | PDF preferido | Recomendado |
@@ -88,6 +88,7 @@ manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (--idioma en|pt)
 ├── 01-brief.md
 ├── 02-plan.md
 ├── 03-inventario.md
+├── estado.md            (progreso y rondas de corrección del manual)
 ├── capturas/
 │   ├── MANIFIESTO.md
 │   └── *.png
@@ -102,6 +103,23 @@ manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (--idioma en|pt)
 │   └── compilacion.log
 └── verificacion.md
 ```
+
+## Datos personales
+
+Si el inventario marca una pantalla con `pii: sí`, el capturador sustituye los datos en la propia pantalla **antes** de capturar (nunca tacha el PNG después) y el check C13 de la fase 7 bloquea el manual si queda alguna sin enmascarar. Solo una `excepción: <motivo>` aprobada en el plan lo evita. Procedimiento en `skills/screenshot-capturer/references/pii-masking.md`.
+
+## Referencias por tipo de aplicación
+
+`app-analyzer` carga la referencia que corresponda: `web-app`, `mobile-app`, `desktop-app`, `cms-platform`, `saas-api` y `auth-flows` (en `skills/app-analyzer/references/`).
+
+## Tests y evals
+
+```
+python3 -m unittest discover -s tests          # scripts de compilación y verificador
+claude plugin eval . --no-publish --runs 1 --max-cost-usd 2 --threshold 0.8
+```
+
+Los evals (`evals/`, 5 casos) comprueban que el orquestador se dispara con una petición de manual, que no se dispara con un README técnico, que el brainstormer pregunta antes de redactar, que el verificador no aprueba sin `manual.docx` y que el capturador enmascara datos personales.
 
 ## Inspiraciones
 
