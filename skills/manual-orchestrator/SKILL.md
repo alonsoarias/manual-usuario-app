@@ -32,15 +32,33 @@ No documentar funcionalidades que la aplicación no tiene. No documentar funcion
 | 3 | Análisis de la aplicación | `app-analyzer` | `03-inventario.md` | Sí |
 | 4 | Captura de pantallas | `screenshot-capturer` | `capturas/*.png` + `MANIFIESTO.md` | No |
 | 5 | Redacción por subagentes | `manual-writer` | `secciones/*.md` | No |
-| 6 | Compilación DOCX/PDF | `manual-compiler` | `salida/manual.{docx,pdf}` | No |
+| 6 | Compilación (DOCX, PDF, HTML, Markdown — los que pida `formato` del brief) | `manual-compiler` | `salida/manual.{docx,pdf,html,md}` | No |
 | 7 | Verificación de calidad | `manual-verifier` | `verificacion.md` | No (informe se muestra siempre) |
+
+## Opción `--idioma`
+
+`/manual [nombre-app] --idioma es|en|pt` (default `es`, igual que el `idioma` de `01-brief.md`; misma tabla `es`/`en`/`pt` que usa `concatenate.py`, ver `manual-compiler/SKILL.md`). Fija el campo `idioma` del brief que arranca el flujo; no es un flag aparte para cada fase.
+
+- Sin `--idioma`, o `--idioma es`: el nombre de la carpeta NO cambia (`manual-{slug-app}-{YYYY-MM-DD}/`, igual que hoy — compatibilidad).
+- Con `--idioma en` o `--idioma pt`: la carpeta pasa a `manual-{slug-app}-{lang}-{YYYY-MM-DD}/`.
+
+### Reutilizar fases 1-3 de otro idioma (flujo, no automatizado)
+
+Si el PO pide explícitamente generar el mismo manual en otro idioma reutilizando el trabajo ya hecho, las fases 1-3 (brainstorm/plan/analyze) se pueden copiar de una corrida previa en vez de rehacerse desde cero:
+
+1. Copiar `01-brief.md`, `02-plan.md` y `03-inventario.md` de la carpeta del idioma de origen a la carpeta nueva (`manual-{slug-app}-{lang}-{YYYY-MM-DD}/`, creada con la fecha de hoy).
+2. Actualizar a mano el campo `idioma` de `01-brief.md` al nuevo idioma antes de continuar; **no** tocar nombres de pantallas/elementos de UI del inventario todavía (eso lo hace la fase 3 si la UI real cambia de idioma — ver más abajo).
+3. Marcar los tres artefactos como ya aprobados (igual que si el checkpoint humano ya hubiera corrido) y seguir en la fase 4.
+
+Las **fases 4-7 (capture/write/compile/verify) SIEMPRE se rehacen**, nunca se copian: la captura de pantallas debe mostrar la UI real en el idioma nuevo (`screenshot-capturer/SKILL.md:101`, "Idioma de la UI = idioma del manual"; si la app no tiene esa UI en el idioma pedido, es bloqueante, no se simula), y la redacción, compilación y verificación dependen de las capturas y del idioma del texto. Reutilizar brief/plan/inventario ahorra las preguntas de alcance y audiencia (que no cambian con el idioma); no ahorra nada de lo que depende de la UI o de la prosa.
 
 ## Directorio de trabajo
 
 Todo el manual vive en una carpeta única para garantizar reproducibilidad y facilitar borrados.
 
 ```
-manual-{slug-app}-{YYYY-MM-DD}/
+manual-{slug-app}-{YYYY-MM-DD}/              (es, o sin --idioma: nombre sin cambios)
+manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (--idioma en|pt)
 ├── estado.md                       (progreso del workflow, ver "Estado del workflow")
 ├── 00-discovery.md                 (opcional, ver "Discovery preliminar")
 ├── 01-brief.md
@@ -100,7 +118,7 @@ Si alguna verificación falla, **no invocar la skill siguiente**. Mostrar al usu
 
 | Comando | Efecto |
 |---------|--------|
-| `/manual [nombre-app]` | Workflow completo de 7 fases |
+| `/manual [nombre-app] [--idioma es\|en\|pt]` | Workflow completo de 7 fases (idioma del manual; default `es`, ver "Opción `--idioma`") |
 | `/manual-brainstorm` | Sólo fase 1 |
 | `/manual-plan` | Sólo fase 2 |
 | `/manual-analyze` | Sólo fase 3 |
@@ -131,7 +149,7 @@ Al terminar la fase 7, mostrar:
 
 1. Tabla resumen de las 7 fases con estado (✓ / ✗).
 2. Veredicto final del verificador (`APROBADO` / `BLOQUEADO`; `PENDIENTE-PASADA-COMPLETA` es intermedio y siempre dispara la pasada completa del paso 5 del bucle, nunca se muestra como final).
-3. Rutas absolutas de `manual.docx` y `manual.pdf` si están presentes.
+3. Rutas absolutas de los artefactos de `salida/` que el brief pidió (`manual.docx`, `manual.pdf`, `manual.html`, `manual.md`) que estén presentes.
 4. Lista de advertencias no bloqueantes que el usuario debería revisar manualmente.
 
 Si el veredicto es `BLOQUEADO`, no afirmar que el manual está terminado. Indicar exactamente qué check falló y qué fase debe re-ejecutarse, y entrar en el bucle de corrección.

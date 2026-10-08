@@ -28,10 +28,11 @@ Cada sección de `02-plan.md` se redacta en un subagente fresco. El subagente re
 4. Las referencias a las capturas (no las imágenes binarias, sólo las rutas).
 5. La plantilla del tipo de sección (`section-templates.md`).
 6. Las reglas de tono y voz (`tone-and-voice.md`).
+7. Si `idioma` del brief es distinto de `es`, el delta de `references/languages.md` para ese idioma (tratamiento, etiquetas fijas Paso/Nota/Advertencia, vocabulario a evitar).
 
 **El subagente no ve secciones de otros subagentes.** No ve el manual completo. Esa restricción evita que reproduzca contenido ya cubierto y mantiene foco.
 
-Consultar `references/tone-and-voice.md` para reglas de redacción, `references/section-templates.md` para las plantillas por tipo.
+Consultar `references/tone-and-voice.md` para reglas de redacción (siempre, es la base), `references/section-templates.md` para las plantillas por tipo, y `references/languages.md` para lo que cambia por idioma — léelo FILTRADO a la fila/sección del `idioma` del brief; para `es` no aporta nada nuevo sobre `tone-and-voice.md`, para `en`/`pt` sus ejemplos sustituyen a los de `tone-and-voice.md` cuando entren en conflicto (p. ej. la tabla de anglicismos §3.3 no aplica a un manual en `en`).
 
 ## Persona del subagente
 
@@ -55,11 +56,13 @@ El subagente entrega un borrador. Antes de aceptarlo y guardarlo en `secciones/{
 | W3 | Nombres de elementos de UI coinciden literal con `03-inventario.md` | Re-encargar señalando las discrepancias |
 | W4 | Sin marcadores `[TODO]`, `[VERIFICAR]`, `[XXX]`, `TBD`, `lorem ipsum` | Re-encargar |
 | W5 | Sigue la plantilla del tipo de sección (encabezados, secciones obligatorias, orden) | Re-encargar |
-| W6 | Páginas reales caen dentro de ±50% de la estimación del plan (si está muy fuera, advertir) | Advertencia, no bloqueo |
+| W6 | Páginas reales caen dentro de ±50% de la estimación del plan (si está muy fuera, advertir; ver nota debajo) | Advertencia, no bloqueo |
 | W7 | Voz activa, presente, segunda persona en al menos 90% de las frases | Re-encargar |
 | W8 | Sin adjetivos vacíos (lista en `tone-and-voice.md`) | Re-encargar |
 
 Si un criterio falla, el subagente recibe el borrador devuelto + instrucción específica del criterio fallido. No más de 3 iteraciones por sección: tras la 3ª, escalar al usuario.
+
+**Nota sobre W6 y la tolerancia de páginas de C4 (`manual-verifier/SKILL.md`, ±40%):** son tolerancias distintas a propósito, no una inconsistencia pendiente de unificar. C4 mide el DOCX/PDF ya compilado, completo, con la paginación real del motor (docenas de páginas: el ruido relativo de una heurística de conteo es pequeño). W6 mide, sección por sección y ANTES de compilar, un borrador en Markdown crudo con una heurística de palabras (sin estilos, saltos de página ni plantilla final); su universo son páginas individuales (a menudo 1-4 por sección), donde esa misma heurística tiene un ruido proporcionalmente mayor. Por eso W6 usa un margen más ancho (±50%) que C4 y, como C4, sólo advierte, nunca bloquea.
 
 ## Estructura de cada `secciones/{ID}-{slug}.md`
 

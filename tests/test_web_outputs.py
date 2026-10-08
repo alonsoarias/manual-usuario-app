@@ -62,9 +62,15 @@ class WebTestCase(ScriptTestCase):
         r = run_script(COMPILE_PANDOC, pandoc_args(m, out, to))
         return r, out, m
 
-    def assert_passes_web_check(self, out: Path):
+    def run_web_check(self, target: Path) -> subprocess.CompletedProcess:
+        """El mismo comando que documenta el check C12 de manual-verifier/SKILL.md."""
         env = {**os.environ, "HOME": str(Path.home())}  # el HOME real: la salida no debe llevar el directorio de quien compila
-        r = subprocess.run([sys.executable, str(CHECK_WEB_OUTPUT), str(out)], capture_output=True, text=True, env=env)
+        return subprocess.run(
+            [sys.executable, str(CHECK_WEB_OUTPUT), str(target)], capture_output=True, text=True, env=env
+        )
+
+    def assert_passes_web_check(self, out: Path):
+        r = self.run_web_check(out)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def outside(self, name: str, data: bytes | str) -> Path:
@@ -126,6 +132,50 @@ class TestGfm(WebTestCase):
         self.assertNotIn(str(self.root), md)
         self.assertNotIn("/home/", md)
         self.assert_passes_web_check(out)
+
+
+class TestC12WebOutputGate(WebTestCase):
+    """Check C12 de manual-verifier/SKILL.md: `check_web_output.py salida/` tras compilar.
+
+    No es un gate nuevo del compilador (manual-compiler no lo invoca por sí mismo): es el mecanismo
+    que la fase 7 corre sobre `salida/` entera, documentado en manual-verifier/SKILL.md y
+    manual-compiler/SKILL.md. El pipeline de compilación (TestRawHtmlIsNeverResolved,
+    TestAttributeInjectionIsNeverLive, TestLinksAreNeverExecutable) ya cierra estos vectores en el
+    `--from` compartido; C12 es la defensa en profundidad para un vector que los sortee.
+    """
+
+    def test_gate_fails_closed_when_a_live_vector_escapes_the_pipeline(self):
+        r, out, _ = self.build("html")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        salida = out.parent
+        # Simula contenido vivo que escapó al --from compartido (p. ej. una regresión futura de
+        # pandoc o del --from): se escribe directo en el artefacto compilado, sin pasar por
+        # concatenate.py ni por compile_pandoc.sh.
+        out.write_text(
+            out.read_text(encoding="utf-8").replace(
+                "</body>", '<a href="javascript:alert(1)" onclick="robar()">clic</a></body>'
+            ),
+            encoding="utf-8",
+        )
+        gate = self.run_web_check(salida)
+        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertIn("javascript:", gate.stdout)
+        self.assertIn("onclick", gate.stdout)
+
+    def test_gate_is_na_without_html_or_markdown_format(self):
+        m = self.manual()
+        out = self.root / "salida" / "manual.docx"
+        r = run_script(COMPILE_PANDOC, pandoc_args(m, out, "docx"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        salida = out.parent
+        self.assertEqual(sorted(p.suffix for p in salida.iterdir()), [".docx", ".log"])
+        # Nada que comprobar: ni .html ni .md. El verificador debe declarar C12 "N/A" a partir del
+        # `formato` del brief (sin formato.html ni formato.markdown), no invocando el script a
+        # ciegas sobre salida/ -- si lo hiciera, el script devuelve rc 2 (uso incorrecto, sin
+        # archivos que comprobar), que no es "limpio" (rc 0) y no debe leerse como un fallo del
+        # check: es la señal de que el check no aplica.
+        gate = self.run_web_check(salida)
+        self.assertEqual(gate.returncode, 2, gate.stdout + gate.stderr)
 
     def test_gfm_media_stay_inside_the_output_directory(self):
         r, out, _ = self.build("gfm")

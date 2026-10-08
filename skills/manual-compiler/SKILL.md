@@ -85,7 +85,7 @@ pandoc --from=markdown-raw_tex-raw_attribute-tex_math_dollars-raw_html-native_di
 - **HTML:** un solo archivo con las imágenes embebidas (`data:`). No lleva rutas locales ni `file:`.
 - **Markdown (GFM):** el `.md` y las imágenes en `salida/web/`; el script ejecuta pandoc desde `salida/`, así que las rutas son relativas al `.md` (`web/<hash>.png`), nunca absolutas. Sin HTML crudo en la salida.
 - `--reference-doc` sólo aplica a `--to docx`.
-- Para comprobar una salida web (sin rutas locales, imágenes que resuelven, sin contenido activo): `python3 skills/manual-verifier/scripts/check_web_output.py salida/` (rc 0 = limpia, 1 = problemas listados, 2 = uso).
+- Verificación (check C12 de `manual-verifier`, bloqueante si el brief pidió `formato.html`/`formato.markdown`): `python3 skills/manual-verifier/scripts/check_web_output.py salida/` (rc 0 = limpia, 1 = problemas listados, 2 = uso incorrecto — tratado como fallo del check si se esperaba salida web). El compilador no la invoca por sí mismo (no depende de otro skill); la invoca la fase 7.
 
 ## Compilación PDF
 
@@ -202,6 +202,7 @@ Antes de declarar la fase 6 terminada, validar:
 | Tamaño PDF | 0.5 MB ≤ tamaño ≤ 50 MB | Investigar |
 | Páginas DOCX | dentro de la tolerancia que fija `manual-verifier` (check C4) respecto a `paginas_objetivo` | Sólo avisa; la decisión es del verificador |
 | Capturas embebidas | conteo de imágenes referenciadas == archivos físicos en `capturas/` | Bloqueo |
+| HTML/Markdown existen (si pedidos) | `salida/manual.html` / `salida/manual.md` presentes | Bloqueo (alimenta el check C12 de `manual-verifier`, que corre en la fase 7) |
 
 ## Salida
 

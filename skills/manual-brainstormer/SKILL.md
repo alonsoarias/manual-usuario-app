@@ -38,7 +38,7 @@ B2. **Tareas concretas** — listar entre 5 y 15 tareas que el usuario final eje
 
 C1. **Módulos incluidos y excluidos** — ¿qué partes de la app entran al manual? ¿qué partes explícitamente no? Si hay áreas administrativas que el usuario final no toca, excluirlas (regla YAGNI).
 
-C2. **Formato de entrega** — DOCX, PDF o ambos. Si el cliente entrega plantilla DOCX con membrete, registrar la ruta para usarla en `--reference-doc` durante la compilación.
+C2. **Formato de entrega** — DOCX, PDF, HTML, Markdown, o cualquier combinación (al menos uno). Si el cliente entrega plantilla DOCX con membrete, registrar la ruta para usarla en `--reference-doc` durante la compilación (sólo aplica a DOCX).
 
 C3. **Profundidad** — escoger una de:
 - **Quickstart** (5-15 páginas) — sólo el camino feliz de las tareas más comunes.
@@ -124,7 +124,7 @@ Antes de cerrar la fase, verificar:
 - `audiencia.perfil` tiene al menos 5 palabras y no es genérico ("todos", "público").
 - `tareas` tiene entre 5 y 15 entradas, todas en infinitivo.
 - `alcance.modulos_incluidos` no vacío.
-- `formato.docx` o `formato.pdf` (al menos uno) en `true`.
+- Al menos uno de `formato.docx`, `formato.pdf`, `formato.html`, `formato.markdown` en `true` (un brief sólo-HTML o sólo-Markdown es válido).
 - `profundidad` y `paginas_objetivo` coherentes (quickstart ≤15, estándar 20-50, exhaustivo ≥60).
 
 Si alguna validación falla, mostrar al usuario el problema y pedir corregir antes de avanzar a la fase 2.

@@ -1,6 +1,6 @@
 # manual-usuario-app
 
-Plugin de Claude Code para generar **manuales de usuario profesionales en DOCX y PDF** de cualquier aplicación de software (web, móvil, escritorio o plataformas CMS), con captura automática de pantallas vía MCPs de browser y un workflow socrático de 7 fases con verificación basada en evidencia. Genérico y reutilizable: sin acoplamientos a clientes, marcas o stacks concretos.
+Plugin de Claude Code para generar **manuales de usuario profesionales en DOCX, PDF, HTML y Markdown** (el brief elige uno o varios) de cualquier aplicación de software (web, móvil, escritorio o plataformas CMS), en **español, inglés o portugués** (`--idioma`), con captura automática de pantallas vía MCPs de browser y un workflow socrático de 7 fases con verificación basada en evidencia. Genérico y reutilizable: sin acoplamientos a clientes, marcas o stacks concretos.
 
 ## Las 7 fases
 
@@ -11,7 +11,7 @@ Plugin de Claude Code para generar **manuales de usuario profesionales en DOCX y
 | 3 | Análisis de la aplicación | `app-analyzer` | `03-inventario.md` |
 | 4 | Captura de pantallas | `screenshot-capturer` | `capturas/*.png` + `MANIFIESTO.md` |
 | 5 | Redacción por subagentes | `manual-writer` | `secciones/*.md` |
-| 6 | Compilación DOCX/PDF | `manual-compiler` | `salida/manual.{docx,pdf}` |
+| 6 | Compilación (DOCX, PDF, HTML, Markdown — según `formato` del brief) | `manual-compiler` | `salida/manual.{docx,pdf,html,md}` |
 | 7 | Verificación de calidad | `manual-verifier` | `verificacion.md` |
 
 Coordinadas por la skill `manual-orchestrator`, con checkpoints humanos después de las fases 1, 2 y 3.
@@ -44,6 +44,7 @@ O, si prefieres referenciar por URL Git:
 |---------|--------|
 | `/manual [nombre-app]` | Workflow completo (7 fases) con checkpoints |
 | `/manual [nombre-app] --rapido` | Workflow completo sin checkpoints intermedios; fase 7 sigue siendo obligatoria |
+| `/manual [nombre-app] --idioma es\|en\|pt` | Fija el idioma del manual (default `es`). Con `en`/`pt` la carpeta se llama `manual-{slug-app}-{lang}-{YYYY-MM-DD}/`; sin el flag, o con `es`, el nombre no cambia |
 | `/manual-brainstorm` | Sólo fase 1 |
 | `/manual-plan` | Sólo fase 2 |
 | `/manual-analyze` | Sólo fase 3 |
@@ -82,7 +83,8 @@ Si no hay ninguno, el plugin produce `capturas/INSTRUCCIONES.md` con pasos para 
 Por cada manual, el plugin crea una carpeta única en el directorio actual:
 
 ```
-manual-{slug-app}-{YYYY-MM-DD}/
+manual-{slug-app}-{YYYY-MM-DD}/              (es, o sin --idioma)
+manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (--idioma en|pt)
 ├── 01-brief.md
 ├── 02-plan.md
 ├── 03-inventario.md
@@ -93,8 +95,11 @@ manual-{slug-app}-{YYYY-MM-DD}/
 │   ├── 00-INDICE.md
 │   └── {ID}-{slug}.md
 ├── salida/
-│   ├── manual.docx
-│   └── manual.pdf
+│   ├── manual.docx    (formato.docx)
+│   ├── manual.pdf     (formato.pdf)
+│   ├── manual.html    (formato.html)
+│   ├── manual.md      (formato.markdown, + web/ con las imágenes)
+│   └── compilacion.log
 └── verificacion.md
 ```
 

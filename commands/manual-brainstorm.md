@@ -11,7 +11,7 @@ Usa la skill `manual-brainstormer` para conducir las 8 preguntas críticas en 3 
 
 - **Bloque A — Identidad** (nombre comercial/técnico, versión, tipo de aplicación)
 - **Bloque B — Audiencia** (perfil específico, tareas concretas)
-- **Bloque C — Alcance y formato** (módulos in/out, formato DOCX/PDF, profundidad)
+- **Bloque C — Alcance y formato** (módulos in/out, formato DOCX/PDF/HTML/Markdown — al menos uno —, profundidad)
 
 ## Pre-requisitos
 
@@ -19,7 +19,9 @@ Ninguno. Esta es la primera fase del workflow.
 
 ## Salida esperada
 
-`{cwd}/manual-{slug-app}-{YYYY-MM-DD}/01-brief.md` con:
+`{cwd}/manual-{slug-app}-{YYYY-MM-DD}/01-brief.md` (o
+`manual-{slug-app}-{lang}-{YYYY-MM-DD}/` si el idioma de la pregunta del
+Bloque C no es español) con:
 
 - Frontmatter YAML completo (`borrador: false`).
 - Identidad de la app, audiencia, tareas, alcance, formato, profundidad.

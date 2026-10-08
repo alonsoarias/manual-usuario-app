@@ -19,7 +19,7 @@ Verificar que existen:
 
 Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los checks.
 
-## Los 11 checks
+## Los 12 checks
 
 | # | Nombre | Bloqueante |
 |---|--------|------------|
@@ -34,6 +34,7 @@ Si falta cualquier output esperado, marcar como `BLOQUEADO` antes de empezar los
 | C9 | PDF tiene texto seleccionable | Sí |
 | C10 | TOC presente | Sí |
 | C11 | Capturas de pasos accionables anotadas | Sí |
+| C12 | Salidas web (HTML/Markdown) sin rutas locales ni contenido activo | Sí (N/A si el brief no pidió `formato.html` ni `formato.markdown`) |
 
 ### C1 — Conteo de secciones (bloqueante)
 
@@ -146,6 +147,18 @@ Adicional: para cada sección de tipo `tarea-paso-a-paso`, listar los pasos cuyo
 
 Si el verificador no puede ejecutar Pillow, marcar el check como `verificación-parcial` y reportar el listado de capturas pendientes de revisión humana.
 
+### C12 — Salidas web (bloqueante, N/A si no aplica)
+
+Sólo aplica si `01-brief.md` tiene `formato.html: true` o `formato.markdown: true`. Si ninguno de los dos está en `true`, el check es **N/A** (no se ejecuta, no cuenta como fallo ni como advertencia, no bloquea el veredicto).
+
+Si aplica, tras la fase 6 (`manual-compiler` ya debe haber producido `salida/manual.html` y/o `salida/manual.md`):
+
+1. Ejecutar `python3 skills/manual-verifier/scripts/check_web_output.py salida/` desde la raíz del manual.
+2. El script imprime una línea `ERROR: archivo: motivo` por problema y devuelve: `0` (limpio, sin rutas locales/`file:`/directorio del usuario, cada imagen o recurso resuelve, sin `<script>`/`<iframe>`/`<object>`/`<embed>`/`on*=`/`javascript:`), `1` (encontró al menos un problema; cada línea `ERROR:` del stdout va al detalle del check), `2` (uso incorrecto — ruta inexistente o directorio sin `.html` ni `.md`; tratar como fallo del check, no como N/A: si `formato.html`/`formato.markdown` es `true` el archivo correspondiente DEBE existir).
+3. rc 0 → check pasa. rc 1 o 2 → check falla (bloqueante): el detalle lista cada línea `ERROR:` tal cual la imprimió el script.
+
+No se reimplementa la lógica de detección en el verificador: el rc del script ES el resultado del check.
+
 ## Salida obligatoria: `verificacion.md`
 
 ```markdown
@@ -154,10 +167,11 @@ fecha: "YYYY-MM-DD HH:MM"
 veredicto: "APROBADO | BLOQUEADO | PENDIENTE-PASADA-COMPLETA"
 ronda: 0                       # 0 = verificación inicial; N = tras la N-ésima corrección (la pasada completa de cierre hereda el N de su ronda)
 alcance: completa              # completa | acotada; solo "completa" puede emitir APROBADO
-total_checks: 11
+total_checks: 12
 checks_pasados: N
 checks_advertencia: N
 checks_fallidos: N
+checks_na: N                   # C12 cuando el brief no pidió formato.html ni formato.markdown; no cuenta como pasado ni como fallo
 ---
 
 # Informe de verificación del manual
@@ -239,7 +253,7 @@ Un `APROBADO` nunca sale de una pasada acotada. Si una pasada acotada no deja bl
 
 ## Anti-patrones
 
-- Marcar como APROBADO sin ejecutar los 11 checks.
+- Marcar como APROBADO sin ejecutar los 12 checks (o sin declarar explícitamente N/A el que no aplique).
 - Saltarse C8/C9/C10 porque "obviamente está bien".
 - Convertir un check bloqueante en advertencia "para no parar la entrega".
 - Ocultar al usuario el informe.

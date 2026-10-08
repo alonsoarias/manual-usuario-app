@@ -11,8 +11,9 @@ Comprueba, en cada archivo:
 - cada imagen/recurso resuelve: `data:` o un archivo relativo que existe junto al archivo (no remoto, no absoluto);
 - ningún contenido activo: <script>, <iframe>, <object>, <embed>, atributos on*=, enlaces `javascript:`.
 
-Script standalone: hoy no lo invoca ningún SKILL.md ni comando automáticamente. Pensado para que una
-fase posterior del verificador lo enganche a un check propio sobre `salida/manual.html` y `salida/manual.md`.
+Es el mecanismo del check C12 ("Salidas web") de `manual-verifier/SKILL.md`: la fase 7 lo invoca sobre
+`salida/` tras compilar y su código de salida (0/1/2) determina si C12 pasa o falla. Bloqueante si el
+brief pidió `formato.html` o `formato.markdown`; N/A (no se ejecuta) si no.
 """
 
 from __future__ import annotations

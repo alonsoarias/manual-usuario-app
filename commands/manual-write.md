@@ -31,3 +31,5 @@ Cada sección con frontmatter (`seccion_id`, `titulo`, `tipo`, `audiencia`, `pag
 | W8 | Sin adjetivos vacíos (intuitivo, fácil, potente, amigable, etc.) |
 
 Máx 3 iteraciones por sección antes de escalar al usuario.
+
+W6 usa ±50% (no el ±40% de C4 en `manual-verifier`) porque mide por sección, antes de compilar, sobre Markdown crudo sin paginación real: ver la nota en `manual-writer/SKILL.md` tras la tabla de criterios.

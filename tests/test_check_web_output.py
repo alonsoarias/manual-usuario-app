@@ -1,4 +1,4 @@
-"""Tests de manual-verifier/scripts/check_web_output.py (script standalone, sin gate automático todavía)."""
+"""Tests de manual-verifier/scripts/check_web_output.py (mecanismo del check C12 de manual-verifier/SKILL.md)."""
 
 from __future__ import annotations
 
