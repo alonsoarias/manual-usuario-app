@@ -36,7 +36,7 @@ Hay clonado el repositorio del cliente o un sub-conjunto inspeccionable.
 
 Estrategia:
 - Usar `Glob`, `Grep` y `Read` para descubrir rutas, vistas, modelos y mensajes.
-- Consultar la guía específica del framework en `references/{web-app,mobile-app,desktop-app,cms-platform}.md`.
+- Consultar la guía específica del framework en `references/{web-app,mobile-app,desktop-app,cms-platform,saas-api,auth-flows}.md`.
 - Para cada hallazgo, registrar la ruta del archivo + número de línea como evidencia.
 - Cuando la UI usa traducciones (i18n), buscar archivos `.po`, `.json`, `.yaml`, `.xml` con strings y registrar los textos del idioma declarado en el brief.
 

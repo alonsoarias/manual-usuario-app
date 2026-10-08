@@ -22,7 +22,7 @@ A1. **Nombre comercial y nombre técnico** — ¿con qué nombre la conocen los 
 A2. **Versión a documentar** — ¿qué versión específica? Si no hay versionado formal, ¿fecha de corte del estado actual?
 
 A3. **Tipo de aplicación** — escoger una y sólo una de:
-- Web (SaaS, intranet, portal)
+- Web (SaaS, intranet, portal, API)
 - Móvil (iOS, Android, híbrida)
 - Escritorio (Windows, macOS, Linux)
 - Plataforma CMS (Moodle, WordPress, OJS, Drupal, Joomla, etc.)
