@@ -8,7 +8,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - Esquema de `MANIFIESTO.md`: nuevas columnas `Pantalla` y `Enmascarado`; un manifiesto sin ellas bloquea el check C13. El inventario gana la columna `pii` y el plan separa `enmascarar` de `anotación` (`tachado-datos` desaparece; migración en `skills/manual-planner/SKILL.md:107`): un plan o inventario v1 bloquea C13.
 - Enmascarado: `pii: sí` del inventario prevalece sobre `enmascarar: no` del plan; solo una `excepción: <motivo>` aprobada por el PO lo evita.
 - El script de compilación de DOCX se unifica en `compile_pandoc.sh --to docx|html|gfm`; el nombre anterior desaparece.
-- `concatenate.py` (rc 2) rechaza: imágenes remotas (`http(s):`, `//`; solo se admite `data:`), imágenes fuera del manual o con otros esquemas, definiciones de imagen por referencia con ruta relativa, enlaces con esquema fuera de `http`, `https`, `mailto`, `tel`, relativo o ancla, metadatos fuera de `ALLOWED_METADATA` e `idioma` fuera de es/en/pt. Los enlaces simbólicos salen con rc 6.
+- `concatenate.py` (rc 2) rechaza: imágenes remotas (`http(s):`, `//`; solo se admite `data:`), imágenes fuera del manual o con otros esquemas, definiciones de imagen por referencia con ruta relativa, enlaces con esquema fuera de `http`, `https`, `mailto`, `tel`, relativo o ancla, metadatos fuera de `ALLOWED_METADATA` e `idioma` fuera de es/en/pt. El PDF rechaza los enlaces simbólicos con rc 6; las demás salidas los omiten con aviso.
 - C12 es bloqueante cuando el brief pide `formato.html` o `formato.markdown`.
 - El PDF por LaTeX desactiva `raw_tex`, `raw_attribute` y las matemáticas `$...$`.
 - Si Typst está instalado y falla, `compile_pdf.sh` termina con rc 5 sin caer a LaTeX.

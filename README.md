@@ -1,136 +1,177 @@
 # manual-usuario-app
 
-Plugin de Claude Code para generar **manuales de usuario profesionales en DOCX, PDF, HTML y Markdown** (el brief elige uno o varios) de cualquier aplicación de software (web, móvil, escritorio o plataformas CMS), en **español, inglés o portugués** (`--idioma`), con captura automática de pantallas vía MCPs de browser y un workflow socrático de 7 fases con verificación basada en evidencia. Genérico y reutilizable: sin acoplamientos a clientes, marcas o stacks concretos.
+Plugin de [Claude Code](https://claude.com/claude-code) que genera **manuales de usuario profesionales** de cualquier aplicación de software (web, móvil, escritorio o CMS). Toma la app real, captura sus pantallas y entrega el manual en **DOCX, PDF, HTML y/o Markdown**, en **español, inglés o portugués**.
 
-## Las 7 fases
+- **Socrático:** pregunta antes de escribir; no inventa funcionalidades.
+- **Con evidencia:** una fase de verificación obligatoria (13 checks) decide si el manual es entregable.
+- **Seguro con datos personales:** enmascara los datos en la pantalla *antes* de capturar.
+- **Genérico:** sin clientes, marcas ni stacks concretos.
 
-| # | Fase | Skill responsable | Artefacto producido |
-|---|------|-------------------|---------------------|
-| 1 | Brainstorming socrático | `manual-brainstormer` | `01-brief.md` |
-| 2 | Plan de secciones | `manual-planner` | `02-plan.md` |
-| 3 | Análisis de la aplicación | `app-analyzer` | `03-inventario.md` |
-| 4 | Captura de pantallas | `screenshot-capturer` | `capturas/*.png` + `MANIFIESTO.md` |
-| 5 | Redacción por subagentes | `manual-writer` | `secciones/*.md` |
-| 6 | Compilación (DOCX, PDF, HTML, Markdown — según `formato` del brief) | `manual-compiler` | `salida/manual.{docx,pdf,html,md}` |
-| 7 | Verificación de calidad | `manual-verifier` | `verificacion.md` |
+Versión actual: **2.0.0** (ver [CHANGELOG.md](CHANGELOG.md)).
 
-Coordinadas por la skill `manual-orchestrator`, con checkpoints humanos después de las fases 1, 2 y 3.
+## Inicio rápido
 
-## Tres reglas innegociables
+```
+/plugin marketplace add alonsoarias/manual-usuario-app
+/plugin install manual-usuario-app@manual-usuario-app-marketplace
+```
 
-1. **No saltar fases.** Cada fase produce un artefacto que la siguiente verifica.
-2. **Evidencia antes de afirmaciones.** La fase 7 siempre se ejecuta; su informe se muestra completo.
-3. **YAGNI documental.** No se documenta lo que la app no tiene ni lo que el cliente no usa.
+Luego, en la carpeta donde quieras el manual:
 
-## Instalación
+```
+/manual Mi App
+/manual Mi App --idioma en
+/manual Mi App --rapido
+```
 
-Clonar el repositorio y registrarlo como marketplace local:
+También puedes pedirlo en lenguaje natural («hazme un manual de usuario de mi aplicación»): la skill `manual-orchestrator` se activa sola.
+
+Instalación desde un clon local:
 
 ```
 /plugin marketplace add /ruta/al/manual-usuario-app
 /plugin install manual-usuario-app@manual-usuario-app-marketplace
 ```
 
-O, si prefieres referenciar por URL Git:
+## Cómo funciona: 7 fases
 
-```
-/plugin marketplace add https://github.com/alonsoarias/manual-usuario-app
-/plugin install manual-usuario-app@manual-usuario-app-marketplace
-```
+| # | Fase | Skill | Artefacto | Checkpoint humano |
+|---|------|-------|-----------|:-:|
+| 1 | Brainstorming socrático | `manual-brainstormer` | `01-brief.md` | Sí |
+| 2 | Plan de secciones | `manual-planner` | `02-plan.md` | Sí |
+| 3 | Análisis de la aplicación | `app-analyzer` | `03-inventario.md` | Sí |
+| 4 | Captura de pantallas | `screenshot-capturer` | `capturas/*.png` + `MANIFIESTO.md` | No |
+| 5 | Redacción por subagentes | `manual-writer` | `secciones/*.md` | No |
+| 6 | Compilación | `manual-compiler` | `salida/manual.{docx,pdf,html,md}` | No |
+| 7 | Verificación de calidad | `manual-verifier` | `verificacion.md` | No (se muestra siempre) |
 
-## Comandos disponibles
+`manual-orchestrator` coordina las siete. Con `--rapido` se omiten los checkpoints 1-3 y se aplican valores por defecto (DOCX + PDF, viewport 1366x768); la fase 7 nunca se omite. Sin Typst ni LaTeX solo se compila el DOCX, con aviso.
+
+### Tres reglas innegociables
+
+1. **No saltar fases.** Cada fase consume el artefacto de la anterior; si falta, se aborta.
+2. **Evidencia antes de afirmaciones.** Nada se declara terminado sin el informe de la fase 7.
+3. **YAGNI documental.** No se documenta lo que la app no tiene ni lo que la audiencia no usa.
+
+### Bucle de corrección
+
+Si la verificación bloquea el manual, el orquestador corrige y re-verifica por **rondas** (máximo 5). Cada ronda re-verifica solo lo que cambió; únicamente una pasada **completa** puede emitir `APROBADO`. El progreso queda en `estado.md`, así que una sesión interrumpida se retoma donde quedó.
+
+## Comandos
 
 | Comando | Efecto |
 |---------|--------|
-| `/manual [nombre-app]` | Workflow completo (7 fases) con checkpoints |
-| `/manual [nombre-app] --rapido` | Workflow completo sin checkpoints intermedios; fase 7 sigue siendo obligatoria |
-| `/manual [nombre-app] --idioma es\|en\|pt` | Fija el idioma del manual (default `es`). Con `en`/`pt` la carpeta se llama `manual-{slug-app}-{lang}-{YYYY-MM-DD}/`; sin el flag, o con `es`, el nombre no cambia |
-| `/manual-brainstorm` | Sólo fase 1 |
-| `/manual-plan` | Sólo fase 2 |
-| `/manual-analyze` | Sólo fase 3 |
-| `/manual-capture` | Sólo fase 4 |
-| `/manual-write` | Sólo fase 5 |
-| `/manual-compile` | Sólo fase 6 |
-| `/manual-verify` | Sólo fase 7 |
+| `/manual [app]` | Workflow completo con checkpoints |
+| `/manual [app] --rapido` | Sin checkpoints intermedios |
+| `/manual [app] --idioma es\|en\|pt` | Fija el idioma (por defecto `es`) |
+| `/manual-brainstorm` | Solo fase 1 |
+| `/manual-plan` | Solo fase 2 |
+| `/manual-analyze` | Solo fase 3 |
+| `/manual-capture` | Solo fase 4 |
+| `/manual-write` | Solo fase 5 |
+| `/manual-compile` | Solo fase 6 |
+| `/manual-verify` | Solo fase 7 (siempre pasada completa) |
 
-Cada comando aislado verifica los pre-requisitos antes de ejecutar (regla 1).
+Cada comando suelto comprueba sus prerrequisitos antes de ejecutar.
 
-## Dependencias del entorno
+## Formatos e idiomas
 
-| Dependencia | Para qué | Obligatorio |
-|-------------|----------|-------------|
-| `pandoc` (≥ 2.19) | DOCX, HTML, GFM, conversión Markdown→Typst | Sí |
-| `python3` (≥ 3.8) | Concatenación, post-proceso | Sí |
-| `Pillow` (Python) | Anotaciones y validación de imágenes | Recomendado |
-| `typst` | PDF preferido | Recomendado |
-| `xelatex` | PDF de fallback | Alternativo a Typst |
-| `pdflatex` | PDF de último recurso | Sólo contenido ASCII |
-| `pdftotext` (poppler) | Verificación de PDF en fase 7 | Recomendado |
-| Fuentes DejaVu Sans / DejaVu Sans Mono | Plantilla por defecto | Recomendado |
+| Formato | Salida | Notas |
+|---------|--------|-------|
+| DOCX | `salida/manual.docx` | Admite plantilla del cliente con `formato.reference_doc_path` en el brief |
+| PDF | `salida/manual.pdf` | Typst si está instalado; si no, XeLaTeX o pdfLaTeX |
+| HTML | `salida/manual.html` | Autocontenido |
+| Markdown | `salida/manual.md` + `salida/web/` | Con las imágenes |
 
-> Seguridad de la compilación: el Markdown lo redactan agentes y no es de confianza. Si Typst está instalado y falla, `compile_pdf.sh` termina con rc 5 sin caer a LaTeX; las imágenes fuera del manual o con esquemas no permitidos abortan con rc 2 y los enlaces simbólicos con rc 6. Detalle en `skills/manual-compiler/SKILL.md`, «Seguridad y códigos de salida».
-
-Para captura automática de pantallas, al menos uno:
-
-- **Playwright MCP** (preferido): `claude mcp add playwright npx '@playwright/mcp@latest'`
-- **Chrome DevTools MCP** (cuando se necesita la sesión real del usuario)
-- **Puppeteer MCP**
-
-Si no hay ninguno, el plugin produce `capturas/INSTRUCCIONES.md` con pasos para captura manual.
-
-## Estructura del directorio de trabajo
-
-Por cada manual, el plugin crea una carpeta única en el directorio actual:
-
-```
-manual-{slug-app}-{YYYY-MM-DD}/              (es, o sin --idioma)
-manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (--idioma en|pt)
-├── 01-brief.md
-├── 02-plan.md
-├── 03-inventario.md
-├── estado.md            (progreso y rondas de corrección del manual)
-├── capturas/
-│   ├── MANIFIESTO.md
-│   └── *.png
-├── secciones/
-│   ├── 00-INDICE.md
-│   └── {ID}-{slug}.md
-├── salida/
-│   ├── manual.docx    (formato.docx)
-│   ├── manual.pdf     (formato.pdf)
-│   ├── manual.html    (formato.html)
-│   ├── manual.md      (formato.markdown, + web/ con las imágenes)
-│   └── compilacion.log
-└── verificacion.md
-```
+El brief elige uno o varios. Cada idioma genera su propia carpeta (`manual-{slug}-{lang}-{fecha}/`, sin sufijo para `es`) con guía de redacción propia por idioma.
 
 ## Datos personales
 
-Si el inventario marca una pantalla con `pii: sí`, el capturador sustituye los datos en la propia pantalla **antes** de capturar (nunca tacha el PNG después) y el check C13 de la fase 7 bloquea el manual si queda alguna sin enmascarar. Solo una `excepción: <motivo>` aprobada en el plan lo evita. Procedimiento en `skills/screenshot-capturer/references/pii-masking.md`.
+Si el inventario marca una pantalla con `pii: sí`, el capturador sustituye los datos **en la propia pantalla antes de capturar**; nunca tacha el PNG después. Esa marca manda sobre `enmascarar: no` del plan; solo una `excepción: <motivo>` aprobada por el responsable lo evita. El check C13 bloquea el manual si queda alguna pantalla sin enmascarar. Procedimiento en `skills/screenshot-capturer/references/pii-masking.md`.
+
+## Verificación: los 13 checks
+
+| Check | Qué comprueba | Bloquea |
+|-------|---------------|:-:|
+| C1 | Conteo de secciones | Sí |
+| C2 | Capturas embebidas | Sí |
+| C3 | Tamaño de DOCX y PDF | Sí |
+| C4 | Páginas frente a la estimación | Aviso |
+| C5 | Textos de UI iguales al inventario | Aviso |
+| C6 | Marcadores y placeholders sin resolver | Sí |
+| C7 | Tono y voz | Aviso |
+| C8 | El DOCX abre sin error | Sí |
+| C9 | El PDF tiene texto seleccionable | Sí |
+| C10 | Tabla de contenido presente | Sí |
+| C11 | Capturas de pasos accionables anotadas | Sí |
+| C12 | HTML/Markdown sin rutas locales ni contenido activo | Sí (si el brief los pide) |
+| C13 | Datos personales enmascarados | Sí |
+
+## Dependencias
+
+| Dependencia | Para qué | Necesaria |
+|-------------|----------|-----------|
+| `pandoc` (probado con 3.7) | DOCX, HTML, Markdown y conversión a Typst | Sí |
+| `python3` ≥ 3.8 | Concatenación, validación y verificadores | Sí |
+| `Pillow` | Anotaciones y validación de imágenes | Recomendada |
+| `typst` | PDF preferido | Recomendada |
+| `xelatex` / `pdflatex` | PDF alternativo (pdflatex solo ASCII) | Alternativa a Typst |
+| `pdftotext` (poppler) | Verificar el PDF en la fase 7 (C9, C13) | Necesaria si el brief pide PDF: sin ella no se puede llegar a `APROBADO` |
+| Fuentes DejaVu Sans y Sans Mono | Plantilla por defecto | Recomendadas |
+
+Para capturar pantallas hace falta al menos un MCP de navegador: **Playwright** (preferido; `claude mcp add playwright npx '@playwright/mcp@latest'`), **Chrome DevTools** (si se necesita la sesión real del usuario) o **Puppeteer**. Sin ninguno, el plugin genera `capturas/INSTRUCCIONES.md` para captura manual.
+
+## Seguridad de la compilación
+
+El Markdown lo redactan agentes y no es de confianza, así que la compilación es fail-closed:
+
+- Rechaza (rc 2) imágenes remotas, fuera del manual o con esquemas no permitidos, y enlaces con esquemas ejecutables como `javascript:`.
+- Desactiva TeX crudo y matemáticas `$…$` en todos los formatos (las matemáticas salen como texto literal).
+- El PDF rechaza enlaces simbólicos (rc 6); las demás salidas los omiten con aviso.
+- Si Typst está instalado y falla, termina con rc 5 sin caer a LaTeX.
+
+Detalle y tabla de códigos de salida en `skills/manual-compiler/SKILL.md`.
+
+## Carpeta de trabajo
+
+Cada manual vive en una carpeta propia del directorio actual:
+
+```
+manual-{slug-app}-{YYYY-MM-DD}/              (es)
+manual-{slug-app}-{lang}-{YYYY-MM-DD}/       (en, pt)
+├── estado.md              progreso y rondas de corrección
+├── 01-brief.md
+├── 02-plan.md
+├── 03-inventario.md
+├── capturas/              *.png + MANIFIESTO.md
+├── secciones/             00-INDICE.md + {ID}-{slug}.md
+├── salida/                manual.{docx,pdf,html,md}, web/ + compilacion.log
+└── verificacion.md        (+ verificacion-ronda-N[-completa].md por ronda)
+```
 
 ## Referencias por tipo de aplicación
 
-`app-analyzer` carga la referencia que corresponda: `web-app`, `mobile-app`, `desktop-app`, `cms-platform`, `saas-api` y `auth-flows` (en `skills/app-analyzer/references/`).
+`app-analyzer` carga la que corresponda, en `skills/app-analyzer/references/`: `web-app`, `mobile-app`, `desktop-app`, `cms-platform`, `saas-api` y `auth-flows` (en pantallas con DOM los códigos 2FA nunca se capturan: se sustituyen por un valor de ejemplo; en apps móviles y de escritorio esas pantallas se describen con texto).
 
-## Tests y evals
+## Desarrollo
 
 ```
-python3 -m unittest discover -s tests          # scripts de compilación y verificador
+python3 -m unittest discover -s tests
+claude plugin validate .
 claude plugin eval . --no-publish --runs 1 --max-cost-usd 2 --threshold 0.8
 ```
 
-Los evals (`evals/`, 5 casos) comprueban que el orquestador se dispara con una petición de manual, que no se dispara con un README técnico, que el brainstormer pregunta antes de redactar, que el verificador no aprueba sin `manual.docx` y que el capturador enmascara datos personales.
+- `tests/`: compilación, verificadores y enmascarado de datos personales.
+- `evals/`: 5 casos (el orquestador se activa con una petición de manual; no se activa con un README técnico; el brainstormer pregunta antes de escribir; el verificador no aprueba sin `manual.docx`; el capturador enmascara datos personales).
 
 ## Inspiraciones
 
-El diseño combina lo mejor de cinco proyectos de la comunidad Claude Code:
-
-- [obra/superpowers](https://github.com/obra/superpowers) — workflow socrático en fases con artefactos verificables, brainstorming previo, planes en tareas atómicas, subagentes frescos por tarea, evidencia antes de afirmaciones, y de `subagent-driven-development` el bucle de corrección acotado (máximo 5 rondas, re-verificación sobre el delta) con registro de progreso por manual (`estado.md`).
-- [GLINCKER/readme-generator](https://github.com/GLINCKER/claude-code-marketplace/tree/main/skills/documentation/readme-generator) — análisis automático de la app cruzando código y UI.
-- [danielrosehill/user-manual-plugin](https://github.com/danielrosehill/user-manual-plugin) — compilación modular DOCX/PDF con Typst preferido y Pandoc fallback.
-- [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) — persona "technical writer senior" en el redactor.
-- [levnikolaevich/claude-code-skills](https://github.com/levnikolaevich/claude-code-skills) (skills de documentación ln-22 y ln-53) — pipeline modo File sin dependencias externas pesadas.
+- [obra/superpowers](https://github.com/obra/superpowers): workflow socrático por fases con artefactos verificables, subagentes frescos por tarea, evidencia antes de afirmaciones y bucle de corrección acotado.
+- [GLINCKER/readme-generator](https://github.com/GLINCKER/claude-code-marketplace/tree/main/skills/documentation/readme-generator): análisis de la app cruzando código y UI.
+- [danielrosehill/user-manual-plugin](https://github.com/danielrosehill/user-manual-plugin): compilación modular DOCX/PDF con Typst y fallback a Pandoc.
+- [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents): la persona «technical writer senior» del redactor.
+- [levnikolaevich/claude-code-skills](https://github.com/levnikolaevich/claude-code-skills): pipeline de documentación sin dependencias pesadas.
 
 ## Licencia
 
-MIT — ver `LICENSE`.
+MIT. Ver [LICENSE](LICENSE).
